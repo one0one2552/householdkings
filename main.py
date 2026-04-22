@@ -264,49 +264,124 @@ CELL_STYLES = {
 
 CUSTOM_CSS = """
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
+:root {
+    --owl-bg: #ffffff;
+    --owl-surface: #ffffff;
+    --owl-surface-soft: #f7f7f7;
+    --owl-text: #1A1A1B;
+    --owl-text-soft: #343438;
+    --owl-muted: #64646a;
+    --owl-structure: #a0a0a0;
+    --owl-accent: #E69500;
+    --owl-accent-soft: rgba(230,149,0,0.18);
+    --owl-accent-strong: #cc8600;
+    --owl-shadow: 0 14px 40px rgba(26, 26, 27, 0.09);
+    --owl-border: rgba(160, 160, 160, 0.35);
+    --owl-header-bg: rgba(255, 255, 255, 0.94);
+    --owl-header-text: #1A1A1B;
+    --owl-text-on-accent: #ffffff;
+}
+body.body--dark {
+    --owl-bg: #1A1A1B;
+    --owl-surface: #232326;
+    --owl-surface-soft: #2a2a2d;
+    --owl-text: #F0F0F0;
+    --owl-text-soft: #dddddd;
+    --owl-muted: #b7b7b7;
+    --owl-structure: #a0a0a0;
+    --owl-accent: #FFB000;
+    --owl-accent-soft: rgba(255,176,0,0.2);
+    --owl-accent-strong: #ffbf33;
+    --owl-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+    --owl-border: rgba(160, 160, 160, 0.45);
+    --owl-header-bg: rgba(26, 26, 27, 0.94);
+    --owl-header-text: #F0F0F0;
+    --owl-text-on-accent: #1A1A1B;
+}
+
 body, .q-page {
-    background: #F4F7FA !important;
-    font-family: 'Inter', sans-serif !important;
-    color: #0A2540 !important;
+    background:
+        radial-gradient(circle at 12% 18%, var(--owl-accent-soft), transparent 34%),
+        radial-gradient(circle at 88% 12%, rgba(160,160,160,0.12), transparent 28%),
+        var(--owl-bg) !important;
+    font-family: 'Exo 2', sans-serif !important;
+    color: var(--owl-text) !important;
 }
+
 .text-h5, .text-h6, .text-subtitle1, .text-subtitle2, h1, h2, h3 {
-    font-family: 'Outfit', sans-serif !important;
+    font-family: 'Rajdhani', sans-serif !important;
+    letter-spacing: 0.03em;
 }
+
 .q-header {
-    background: #0A2540 !important;
-    box-shadow: 0 2px 0 #00E5FF !important;
+    background: var(--owl-header-bg) !important;
+    color: var(--owl-header-text) !important;
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--owl-border);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08) !important;
 }
+
 .q-card {
-    color: #0A2540 !important;
+    color: var(--owl-text) !important;
+    background: linear-gradient(180deg, var(--owl-surface) 0%, var(--owl-surface-soft) 100%) !important;
+    border: 1px solid var(--owl-border);
 }
+
 .q-field__label, .q-field__native {
-    color: #0A2540 !important;
+    color: var(--owl-text) !important;
 }
+
+.q-field--outlined .q-field__control {
+    border-radius: 12px;
+    border: 1px solid var(--owl-border);
+    background: var(--owl-surface);
+}
+
+.q-btn {
+    border-radius: 11px;
+}
+
+.q-btn--flat {
+    color: var(--owl-text) !important;
+}
+
+.q-btn--unelevated {
+    background: var(--owl-accent) !important;
+    color: var(--owl-text-on-accent) !important;
+}
+
 .hrp-matrix-cell {
     min-width: 110px;
     min-height: 60px;
     transition: background 0.15s;
 }
+
 .hrp-matrix-cell:hover {
     filter: brightness(0.96);
 }
+
 .hrp-card {
-    border-radius: 12px !important;
-    background: #ffffff !important;
-    box-shadow: 0 2px 12px rgba(10,37,64,0.08) !important;
-    transition: transform 0.15s, box-shadow 0.15s;
+    border-radius: 18px !important;
+    background: linear-gradient(180deg, var(--owl-surface) 0%, var(--owl-surface-soft) 100%) !important;
+    box-shadow: var(--owl-shadow) !important;
+    border: 1px solid var(--owl-border);
+    transition: transform 0.18s, box-shadow 0.18s;
 }
+
 .hrp-card:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(10,37,64,0.14) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18) !important;
 }
+
 .hrp-stat-card {
-    border-radius: 12px !important;
-    background: #ffffff !important;
-    box-shadow: 0 2px 8px rgba(10,37,64,0.06) !important;
+    border-radius: 16px !important;
+    background: linear-gradient(180deg, var(--owl-surface) 0%, var(--owl-surface-soft) 100%) !important;
+    box-shadow: var(--owl-shadow) !important;
+    border: 1px solid var(--owl-border);
 }
+
 .hrp-tag {
     display: inline-flex;
     align-items: center;
@@ -314,35 +389,73 @@ body, .q-page {
     border-radius: 10px;
     font-size: 10px;
     font-weight: 600;
-    color: white;
+    color: var(--owl-text-on-accent);
     margin: 1px;
 }
+
 .hrp-user-chip {
     display: inline-flex;
     align-items: center;
-    padding: 1px 8px;
+    padding: 1px 10px;
     border-radius: 12px;
     font-size: 11px;
     font-weight: 600;
-    color: white;
+    color: var(--owl-text-on-accent);
     margin: 1px;
 }
+
 .sortable-ghost {
     opacity: 0.4;
 }
+
 .sortable-drag {
-    background: rgba(0,194,209,0.2) !important;
+    background: var(--owl-accent-soft) !important;
 }
+
 .hrp-table th {
-    font-family: 'Outfit', sans-serif !important;
+    font-family: 'Rajdhani', sans-serif !important;
 }
+
+.hrp-wordmark {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    color: var(--owl-text);
+}
+
+.hrp-submark {
+    font-family: 'Exo 2', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--owl-muted);
+}
+
+.hrp-theme-switch .q-toggle__inner {
+    color: var(--owl-accent) !important;
+}
+
+/* Map legacy inline colors to the new theme palette */
+[style*="#0A2540"] { color: var(--owl-text) !important; }
+[style*="#64748b"] { color: var(--owl-muted) !important; }
+[style*="#94a3b8"] { color: var(--owl-structure) !important; }
+[style*="#00E5FF"], [style*="color: #00C2D1"] { color: var(--owl-accent) !important; }
+[style*="background: #00C2D1"] { background: var(--owl-accent) !important; }
+[style*="background: #ffffff"] { background: var(--owl-surface) !important; }
+[style*="background: #f8fafc"] { background: var(--owl-surface-soft) !important; }
+[style*="color: #e2e8f0"] { color: var(--owl-text-soft) !important; }
+[style*="color: white"] { color: var(--owl-text-on-accent) !important; }
 </style>
 """
 
 LOGIN_CSS = """
 <style>
 body, .q-page, .nicegui-content {
-    background: linear-gradient(135deg, #0A2540 0%, #0d3d6b 60%, #00404d 100%) !important;
+    background:
+        radial-gradient(circle at 14% 18%, var(--owl-accent-soft), transparent 40%),
+        radial-gradient(circle at 82% 14%, rgba(160,160,160,0.15), transparent 30%),
+        var(--owl-bg) !important;
 }
 </style>
 """
@@ -357,21 +470,41 @@ SORTABLE_JS = '<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sorta
 
 @ui.page("/login")
 def login_page():
-    ui.dark_mode(False)
+    theme_is_dark = nicegui_app.storage.user.get("theme", "light") == "dark"
+    dark_mode = ui.dark_mode(theme_is_dark)
     ui.add_head_html(CUSTOM_CSS)
     ui.add_head_html(LOGIN_CSS)
 
-    with ui.card().classes("absolute-center w-96 rounded-2xl").style(
-        "background: #ffffff; box-shadow: 0 8px 40px rgba(0,0,0,0.25);"
+    with ui.card().classes("absolute-center w-[420px] rounded-2xl px-4 py-3").style(
+        "box-shadow: var(--owl-shadow); border: 1px solid var(--owl-border);"
     ):
-        with ui.column().classes("w-full items-center gap-2 py-4"):
-            ui.html('<div style="font-family:Outfit,sans-serif;font-size:28px;font-weight:700;color:#0A2540;letter-spacing:0.08em;">O·W·L</div>')
-            ui.label("Haushalts-Planer").classes("text-h6 font-bold").style("color:#0A2540; font-family: Outfit, sans-serif;")
-            ui.label("Anmelden um fortzufahren").classes("text-caption mb-2").style("color:#64748b;")
+        with ui.row().classes("w-full items-center justify-between mb-2"):
+            with ui.row().classes("items-center gap-2"):
+                logo_light = ui.image("ci/owl_dark.jpg").classes("w-11 h-11 rounded-full object-cover")
+                logo_dark = ui.image("ci/owl_light.jpg").classes("w-11 h-11 rounded-full object-cover")
+                logo_light.set_visibility(not theme_is_dark)
+                logo_dark.set_visibility(theme_is_dark)
+                with ui.column().classes("gap-0"):
+                    ui.label("O.W.L.").classes("hrp-wordmark")
+                    ui.label("Open Work Lab").classes("hrp-submark")
+            theme_switch = ui.switch("Dark", value=theme_is_dark, on_change=lambda e: set_theme(e.value)).classes("hrp-theme-switch text-xs")
+
+        with ui.column().classes("w-full items-center gap-2 py-2"):
+            ui.label("Haushalts-Planer").classes("text-h5 font-bold")
+            ui.label("Anmelden, um fortzufahren").classes("text-caption mb-2").style("color: var(--owl-muted);")
 
         username_input = ui.input("Benutzername").props("outlined rounded").classes("w-full")
         password_input = ui.input("Passwort", password=True, password_toggle_button=True).props("outlined rounded").classes("w-full")
         error_label = ui.label("").classes("text-red text-center w-full")
+
+        def set_theme(enabled: bool):
+            nicegui_app.storage.user["theme"] = "dark" if enabled else "light"
+            if enabled:
+                dark_mode.enable()
+            else:
+                dark_mode.disable()
+            logo_light.set_visibility(not enabled)
+            logo_dark.set_visibility(enabled)
 
         def do_login():
             db = _get_db()
@@ -388,12 +521,13 @@ def login_page():
             db.close()
             ui.navigate.to("/")
 
-        ui.button("Anmelden", on_click=do_login).props("rounded unelevated size=lg").classes("w-full mt-2").style("background: #00C2D1; color: white; font-family: Outfit, sans-serif;")
+        ui.button("Anmelden", on_click=do_login).props("rounded unelevated size=lg").classes("w-full mt-2")
 
 
 @ui.page("/")
 def main_page():
-    ui.dark_mode(False)
+    theme_is_dark = nicegui_app.storage.user.get("theme", "light") == "dark"
+    dark_mode = ui.dark_mode(theme_is_dark)
     ui.add_head_html(CUSTOM_CSS)
     ui.add_head_html(SORTABLE_JS)
     user = _current_user(nicegui_app.storage.user)
@@ -442,12 +576,28 @@ def main_page():
     # --------------- Header ---------------
     with ui.header().classes("items-center justify-between px-6 py-2"):
         with ui.row().classes("items-center gap-3"):
-            ui.html('<span style="font-family:Outfit,sans-serif;font-size:20px;font-weight:700;color:#00E5FF;letter-spacing:0.1em;">O·W·L</span>')
-            ui.label("Haushalts-Planer").classes("text-subtitle1 font-bold").style("color: white; font-family: Outfit, sans-serif;")
+            logo_light = ui.image("ci/owl_dark.jpg").classes("w-9 h-9 rounded-full object-cover")
+            logo_dark = ui.image("ci/owl_light.jpg").classes("w-9 h-9 rounded-full object-cover")
+            logo_light.set_visibility(not theme_is_dark)
+            logo_dark.set_visibility(theme_is_dark)
+            with ui.column().classes("gap-0"):
+                ui.label("O.W.L.").classes("hrp-wordmark")
+                ui.label("Open Work Lab").classes("hrp-submark")
         with ui.row().classes("items-center gap-3"):
-            ui.icon("person", size="20px").style("color: #00E5FF;")
-            ui.label(user.username).classes("text-sm font-medium").style("color: white;")
-            ui.button("Logout", on_click=lambda: _logout(), icon="logout").props("flat rounded size=sm").style("color: white;")
+            ui.icon("person", size="20px").style("color: var(--owl-accent);")
+            ui.label(user.username).classes("text-sm font-medium").style("color: var(--owl-text);")
+
+            def set_theme(enabled: bool):
+                nicegui_app.storage.user["theme"] = "dark" if enabled else "light"
+                if enabled:
+                    dark_mode.enable()
+                else:
+                    dark_mode.disable()
+                logo_light.set_visibility(not enabled)
+                logo_dark.set_visibility(enabled)
+
+            ui.switch("Dark", value=theme_is_dark, on_change=lambda e: set_theme(e.value)).classes("hrp-theme-switch text-xs")
+            ui.button("Logout", on_click=lambda: _logout(), icon="logout").props("flat rounded size=sm")
 
     def _logout():
         nicegui_app.storage.user.clear()
