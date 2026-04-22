@@ -81,6 +81,7 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String, nullable=False)
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.USER, nullable=False)
     daily_capacity_minutes: Mapped[int] = mapped_column(Integer, default=480, nullable=False)
+    can_self_assign: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     assigned_instances = relationship(
         "TaskInstance", secondary=task_instance_users, back_populates="assigned_users"
@@ -105,6 +106,8 @@ class Task(Base):
     base_duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
     is_recurring: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     recurrence_rule: Mapped[str | None] = mapped_column(String, nullable=True)
+    description: Mapped[str | None] = mapped_column(String, nullable=True)
+    excluded_dates: Mapped[str | None] = mapped_column(String, nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     instances = relationship("TaskInstance", back_populates="task", cascade="all, delete-orphan")
@@ -118,6 +121,7 @@ class TaskInstance(Base):
     task_id: Mapped[str] = mapped_column(String, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
     date: Mapped[date] = mapped_column(Date, nullable=False)
     status: Mapped[TaskStatus] = mapped_column(Enum(TaskStatus), default=TaskStatus.OPEN, nullable=False)
+    notes: Mapped[str | None] = mapped_column(String, nullable=True)
 
     task = relationship("Task", back_populates="instances")
     assigned_users = relationship(
@@ -125,11 +129,29 @@ class TaskInstance(Base):
     )
 
 
+def _migrate_db():
+    """Apply incremental schema migrations for existing databases."""
+    migrations = [
+        "ALTER TABLE users ADD COLUMN can_self_assign BOOLEAN NOT NULL DEFAULT 0",
+        "ALTER TABLE tasks ADD COLUMN description VARCHAR",
+        "ALTER TABLE tasks ADD COLUMN excluded_dates VARCHAR",
+        "ALTER TABLE task_instances ADD COLUMN notes VARCHAR",
+    ]
+    with engine.connect() as conn:
+        for sql in migrations:
+            try:
+                conn.execute(text(sql))
+                conn.commit()
+            except Exception:
+                pass  # column already exists
+
+
 def init_db():
     """Create all tables and ensure the data directory exists."""
     import os
     os.makedirs("data", exist_ok=True)
     Base.metadata.create_all(bind=engine)
+    _migrate_db()
 
 
 def get_db():

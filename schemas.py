@@ -22,6 +22,7 @@ class UserCreate(BaseModel):
     password: str = Field(..., min_length=4, max_length=128)
     role: UserRole = UserRole.USER
     daily_capacity_minutes: int = Field(default=480, ge=0, le=1440)
+    can_self_assign: bool = False
 
 
 class UserUpdate(BaseModel):
@@ -29,6 +30,7 @@ class UserUpdate(BaseModel):
     role: UserRole | None = None
     daily_capacity_minutes: int | None = Field(default=None, ge=0, le=1440)
     password: str | None = Field(default=None, min_length=4, max_length=128)
+    can_self_assign: bool | None = None
 
 
 class UserOut(BaseModel):
@@ -36,6 +38,7 @@ class UserOut(BaseModel):
     username: str
     role: UserRole
     daily_capacity_minutes: int
+    can_self_assign: bool
 
     model_config = {"from_attributes": True}
 
@@ -44,6 +47,7 @@ class UserOut(BaseModel):
 
 class TaskCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
+    description: str | None = None
     base_duration_minutes: int = Field(default=30, ge=1, le=1440)
     is_recurring: bool = False
     recurrence_rule: str | None = None
@@ -51,6 +55,7 @@ class TaskCreate(BaseModel):
 
 class TaskUpdate(BaseModel):
     title: str | None = None
+    description: str | None = None
     base_duration_minutes: int | None = Field(default=None, ge=1, le=1440)
     is_recurring: bool | None = None
     recurrence_rule: str | None = None
@@ -59,6 +64,7 @@ class TaskUpdate(BaseModel):
 class TaskOut(BaseModel):
     id: str
     title: str
+    description: str | None
     base_duration_minutes: int
     is_recurring: bool
     recurrence_rule: str | None
@@ -77,6 +83,7 @@ class TaskInstanceCreate(BaseModel):
 class TaskInstanceUpdate(BaseModel):
     status: TaskStatus | None = None
     assigned_user_ids: list[str] | None = None
+    notes: str | None = None
 
 
 class TaskInstanceOut(BaseModel):

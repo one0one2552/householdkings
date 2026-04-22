@@ -125,6 +125,34 @@ def _recurrence_days_to_str(days: list[int]) -> str | None:
     return ",".join(str(d) for d in sorted(set(days)))
 
 
+def _get_excluded_dates(task: Task) -> set[date]:
+    if not task.excluded_dates:
+        return set()
+    result = set()
+    for s in task.excluded_dates.split(","):
+        s = s.strip()
+        if s:
+            try:
+                result.add(date.fromisoformat(s))
+            except ValueError:
+                pass
+    return result
+
+
+def _add_excluded_date(db: Session, task: Task, d: date):
+    excluded = _get_excluded_dates(task)
+    excluded.add(d)
+    task.excluded_dates = ",".join(dt.isoformat() for dt in excluded)
+    db.commit()
+
+
+def _remove_excluded_date(db: Session, task: Task, d: date):
+    excluded = _get_excluded_dates(task)
+    excluded.discard(d)
+    task.excluded_dates = ",".join(dt.isoformat() for dt in excluded) or None
+    db.commit()
+
+
 def _ensure_recurring_instances(db: Session, tasks: list[Task], dates: list[date]):
     existing = set()
     for inst in db.query(TaskInstance.task_id, TaskInstance.date).filter(TaskInstance.date.in_(dates)).all():
@@ -134,7 +162,10 @@ def _ensure_recurring_instances(db: Session, tasks: list[Task], dates: list[date
         rec_days = _parse_recurrence_days(task.recurrence_rule)
         if not rec_days:
             continue
+        excluded = _get_excluded_dates(task)
         for d in dates:
+            if d in excluded:
+                continue
             if d.weekday() in rec_days and (task.id, d) not in existing:
                 inst = TaskInstance(
                     id=str(uuid.uuid4()),
@@ -204,11 +235,11 @@ def _cell_status(inst: TaskInstance | None, d: date) -> str:
 
 
 CELL_STYLES = {
-    "completed":  ("#10b981", "rgba(16,185,129,0.12)",  "#10b981"),
-    "assigned":   ("#3b82f6", "rgba(59,130,246,0.10)",  "#3b82f6"),
-    "unassigned": ("#f59e0b", "rgba(245,158,11,0.10)",  "#f59e0b"),
-    "overdue":    ("#ef4444", "rgba(239,68,68,0.12)",   "#ef4444"),
-    "inactive":   ("#4b5563", "rgba(30,30,50,0.3)",     "#4b5563"),
+    "completed":  ("#10b981", "rgba(16,185,129,0.10)",  "#10b981"),
+    "assigned":   ("#00C2D1", "rgba(0,194,209,0.10)",   "#00C2D1"),
+    "unassigned": ("#f59e0b", "rgba(245,158,11,0.08)",  "#f59e0b"),
+    "overdue":    ("#ef4444", "rgba(239,68,68,0.10)",   "#ef4444"),
+    "inactive":   ("#94a3b8", "rgba(148,163,184,0.10)", "#94a3b8"),
 }
 
 # ---------------------------------------------------------------------------
@@ -216,12 +247,26 @@ CELL_STYLES = {
 # ---------------------------------------------------------------------------
 
 CUSTOM_CSS = """
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-body {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%) !important;
+body, .q-page {
+    background: #F4F7FA !important;
+    font-family: 'Inter', sans-serif !important;
+    color: #0A2540 !important;
+}
+.text-h5, .text-h6, .text-subtitle1, .text-subtitle2, h1, h2, h3 {
+    font-family: 'Outfit', sans-serif !important;
 }
 .q-header {
-    background: linear-gradient(90deg, #6366f1, #8b5cf6) !important;
+    background: #0A2540 !important;
+    box-shadow: 0 2px 0 #00E5FF !important;
+}
+.q-card {
+    color: #0A2540 !important;
+}
+.q-field__label, .q-field__native {
+    color: #0A2540 !important;
 }
 .hrp-matrix-cell {
     min-width: 110px;
@@ -229,20 +274,22 @@ body {
     transition: background 0.15s;
 }
 .hrp-matrix-cell:hover {
-    filter: brightness(1.15);
+    filter: brightness(0.96);
 }
 .hrp-card {
     border-radius: 12px !important;
+    background: #ffffff !important;
+    box-shadow: 0 2px 12px rgba(10,37,64,0.08) !important;
     transition: transform 0.15s, box-shadow 0.15s;
 }
 .hrp-card:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    box-shadow: 0 6px 20px rgba(10,37,64,0.14) !important;
 }
 .hrp-stat-card {
     border-radius: 12px !important;
-    background: rgba(22, 33, 62, 0.8);
-    backdrop-filter: blur(4px);
+    background: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(10,37,64,0.06) !important;
 }
 .hrp-tag {
     display: inline-flex;
@@ -268,7 +315,18 @@ body {
     opacity: 0.4;
 }
 .sortable-drag {
-    background: rgba(99, 102, 241, 0.3) !important;
+    background: rgba(0,194,209,0.2) !important;
+}
+.hrp-table th {
+    font-family: 'Outfit', sans-serif !important;
+}
+</style>
+"""
+
+LOGIN_CSS = """
+<style>
+body, .q-page, .nicegui-content {
+    background: linear-gradient(135deg, #0A2540 0%, #0d3d6b 60%, #00404d 100%) !important;
 }
 </style>
 """
@@ -283,16 +341,17 @@ SORTABLE_JS = '<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sorta
 
 @ui.page("/login")
 def login_page():
-    ui.dark_mode(True)
+    ui.dark_mode(False)
     ui.add_head_html(CUSTOM_CSS)
+    ui.add_head_html(LOGIN_CSS)
 
     with ui.card().classes("absolute-center w-96 rounded-2xl").style(
-        "background: rgba(22, 33, 62, 0.95); backdrop-filter: blur(10px);"
+        "background: #ffffff; box-shadow: 0 8px 40px rgba(0,0,0,0.25);"
     ):
         with ui.column().classes("w-full items-center gap-2 py-4"):
-            ui.icon("home", size="48px", color="#6366f1")
-            ui.label("Haushalts-Planer").classes("text-h5 font-bold")
-            ui.label("Anmelden um fortzufahren").classes("text-caption text-gray-400 mb-2")
+            ui.html('<div style="font-family:Outfit,sans-serif;font-size:28px;font-weight:700;color:#0A2540;letter-spacing:0.08em;">O·W·L</div>')
+            ui.label("Haushalts-Planer").classes("text-h6 font-bold").style("color:#0A2540; font-family: Outfit, sans-serif;")
+            ui.label("Anmelden um fortzufahren").classes("text-caption mb-2").style("color:#64748b;")
 
         username_input = ui.input("Benutzername").props("outlined rounded").classes("w-full")
         password_input = ui.input("Passwort", password=True, password_toggle_button=True).props("outlined rounded").classes("w-full")
@@ -313,12 +372,12 @@ def login_page():
             db.close()
             ui.navigate.to("/")
 
-        ui.button("Anmelden", on_click=do_login, color="#6366f1").props("rounded unelevated size=lg").classes("w-full mt-2")
+        ui.button("Anmelden", on_click=do_login).props("rounded unelevated size=lg").classes("w-full mt-2").style("background: #00C2D1; color: white; font-family: Outfit, sans-serif;")
 
 
 @ui.page("/")
 def main_page():
-    ui.dark_mode(True)
+    ui.dark_mode(False)
     ui.add_head_html(CUSTOM_CSS)
     ui.add_head_html(SORTABLE_JS)
     user = _current_user(nicegui_app.storage.user)
@@ -344,12 +403,12 @@ def main_page():
     # --------------- Header ---------------
     with ui.header().classes("items-center justify-between px-6 py-2"):
         with ui.row().classes("items-center gap-3"):
-            ui.icon("home", size="28px")
-            ui.label("Haushalts-Planer").classes("text-h6 font-bold")
+            ui.html('<span style="font-family:Outfit,sans-serif;font-size:20px;font-weight:700;color:#00E5FF;letter-spacing:0.1em;">O·W·L</span>')
+            ui.label("Haushalts-Planer").classes("text-subtitle1 font-bold").style("color: white; font-family: Outfit, sans-serif;")
         with ui.row().classes("items-center gap-3"):
-            ui.icon("person", size="20px")
-            ui.label(user.username).classes("text-sm font-medium")
-            ui.button("Logout", on_click=lambda: _logout(), icon="logout").props("flat rounded size=sm text-color=white")
+            ui.icon("person", size="20px").style("color: #00E5FF;")
+            ui.label(user.username).classes("text-sm font-medium").style("color: white;")
+            ui.button("Logout", on_click=lambda: _logout(), icon="logout").props("flat rounded size=sm").style("color: white;")
 
     def _logout():
         nicegui_app.storage.user.clear()
@@ -357,7 +416,7 @@ def main_page():
 
     # --------------- Navigation ---------------
     with ui.card().classes("w-full rounded-xl mx-4 mt-3 px-4 py-3").style(
-        "background: rgba(22, 33, 62, 0.7); backdrop-filter: blur(4px);"
+        "background: #ffffff; box-shadow: 0 2px 8px rgba(10,37,64,0.08); border-bottom: 2px solid rgba(0,229,255,0.4);"
     ):
         with ui.row().classes("w-full items-center justify-center gap-4 flex-wrap"):
             def _prev():
@@ -370,9 +429,9 @@ def main_page():
                 state["ref_date"] += delta
                 rebuild()
 
-            ui.button(icon="chevron_left", on_click=_prev).props("flat round dense color=white")
-            date_label = ui.label("").classes("text-subtitle1 font-bold min-w-[200px] text-center")
-            ui.button(icon="chevron_right", on_click=_next).props("flat round dense color=white")
+            ui.button(icon="chevron_left", on_click=_prev).props("flat round dense").style("color: #0A2540;")
+            date_label = ui.label("").classes("text-subtitle1 font-bold min-w-[200px] text-center").style("color: #0A2540;")
+            ui.button(icon="chevron_right", on_click=_next).props("flat round dense").style("color: #0A2540;")
 
             ui.separator().props("vertical").classes("h-6")
 
@@ -384,7 +443,7 @@ def main_page():
                 {"week": "1 Woche", "2weeks": "2 Wochen", "month": "Monat"},
                 value="week",
                 on_change=lambda e: toggle_view(e.value),
-            ).props("rounded dense color=indigo text-color=white no-caps")
+            ).props("rounded dense no-caps").style("color: #0A2540;")
 
             ui.separator().props("vertical").classes("h-6")
 
@@ -396,12 +455,12 @@ def main_page():
                 {"matrix": "Matrix", "list": "Liste", "day": "Heute"},
                 value="matrix",
                 on_change=lambda e: toggle_display(e.value),
-            ).props("rounded dense color=indigo text-color=white no-caps")
+            ).props("rounded dense no-caps").style("color: #0A2540;")
 
             def go_today():
                 state["ref_date"] = date.today()
                 rebuild()
-            ui.button("Heute", icon="today", on_click=go_today).props("flat rounded dense no-caps color=white")
+            ui.button("Heute", icon="today", on_click=go_today).props("flat rounded dense no-caps").style("color: #0A2540;")
 
     # --------------- Containers ---------------
     matrix_container = ui.column().classes("w-full px-4 mt-3")
@@ -432,7 +491,7 @@ def main_page():
         if initial_days is None:
             initial_days = []
         all_selected = set(initial_days) == set(range(7))
-        ui.label("Wiederholen an:").classes("text-sm mt-2 text-gray-300")
+        ui.label("Wiederholen an:").classes("text-sm mt-2").style("color: #64748b;")
         checkboxes: dict[int, ui.checkbox] = {}
 
         def on_daily_change(e):
@@ -457,9 +516,9 @@ def main_page():
         db = _get_db()
         weekday_label = WEEKDAY_LABELS[instance_date.weekday()]
 
-        with ui.dialog() as dlg, ui.card().classes("w-[500px] rounded-xl").style("background: rgba(22,33,62,0.95);"):
-            ui.label("Personen zuweisen").classes("text-h6 font-bold")
-            ui.label(f"{task.title} – {instance_date.strftime('%A, %d.%m.%Y')}").classes("text-caption text-gray-400 mb-2")
+        with ui.dialog() as dlg, ui.card().classes("w-[500px] rounded-xl").style("background: #ffffff;"):
+            ui.label("Personen zuweisen").classes("text-h6 font-bold").style("color: #0A2540; font-family: Outfit, sans-serif;")
+            ui.label(f"{task.title} – {instance_date.strftime('%A, %d.%m.%Y')}").classes("text-caption mb-2").style("color: #64748b;")
 
             rows: list[dict] = []
             for idx, u in enumerate(all_users):
@@ -468,7 +527,7 @@ def main_page():
                 mode = _get_assignment_mode(db, instance_id, u.id) if is_assigned else None
 
                 with ui.card().classes("w-full mb-1 py-2 px-3 rounded-lg").style(
-                    f"background: rgba(30,30,50,0.6); border-left: 3px solid {color};"
+                    f"background: #f8fafc; border-left: 3px solid {color};"
                 ):
                     with ui.row().classes("items-center gap-3 w-full"):
                         cb = ui.checkbox(value=is_assigned)
@@ -515,7 +574,7 @@ def main_page():
 
             with ui.row().classes("w-full justify-end gap-2 mt-3"):
                 ui.button("Abbrechen", on_click=dlg.close).props("flat rounded no-caps")
-                ui.button("Speichern", on_click=save_assign, color="#6366f1").props("rounded unelevated no-caps")
+                ui.button("Speichern", on_click=save_assign).props("rounded unelevated no-caps").style("background: #00C2D1; color: white;")
         db.close()
         dlg.open()
 
@@ -558,9 +617,10 @@ def main_page():
         all_tags = db.query(Tag).order_by(Tag.name).all()
         tag_options = {t.id: t.name for t in all_tags}
 
-        with ui.dialog() as dlg, ui.card().classes("w-[420px] rounded-xl").style("background: rgba(22,33,62,0.95);"):
-            ui.label("Neue Aufgabe").classes("text-h6 font-bold")
+        with ui.dialog() as dlg, ui.card().classes("w-[480px] rounded-xl").style("background: #ffffff;"):
+            ui.label("Neue Aufgabe").classes("text-h6 font-bold").style("color: #0A2540; font-family: Outfit, sans-serif;")
             title_in = ui.input("Titel").props("outlined rounded").classes("w-full")
+            desc_in = ui.textarea("Beschreibung (optional)").props("outlined rounded autogrow").classes("w-full")
             dur_in = ui.number("Dauer (Min.)", value=30, min=1, max=1440).props("outlined rounded").classes("w-full")
 
             if tag_options:
@@ -578,6 +638,7 @@ def main_page():
                 t = Task(
                     id=str(uuid.uuid4()),
                     title=title_in.value.strip(),
+                    description=desc_in.value.strip() or None,
                     base_duration_minutes=int(dur_in.value),
                     is_recurring=len(selected) > 0,
                     recurrence_rule=_recurrence_days_to_str(selected),
@@ -597,7 +658,7 @@ def main_page():
 
             with ui.row().classes("w-full justify-end gap-2 mt-3"):
                 ui.button("Abbrechen", on_click=dlg.close).props("flat rounded no-caps")
-                ui.button("Speichern", on_click=save, color="#6366f1").props("rounded unelevated no-caps")
+                ui.button("Speichern", on_click=save).props("rounded unelevated no-caps").style("background: #00C2D1; color: white;")
         db.close()
         dlg.open()
 
@@ -612,9 +673,10 @@ def main_page():
         all_tags = db.query(Tag).order_by(Tag.name).all()
         tag_options = {t.id: t.name for t in all_tags}
 
-        with ui.dialog() as dlg, ui.card().classes("w-[420px] rounded-xl").style("background: rgba(22,33,62,0.95);"):
-            ui.label("Aufgabe bearbeiten").classes("text-h6 font-bold")
+        with ui.dialog() as dlg, ui.card().classes("w-[480px] rounded-xl").style("background: #ffffff;"):
+            ui.label("Aufgabe bearbeiten").classes("text-h6 font-bold").style("color: #0A2540; font-family: Outfit, sans-serif;")
             title_in = ui.input("Titel", value=task.title).props("outlined rounded").classes("w-full")
+            desc_in = ui.textarea("Beschreibung", value=task.description or "").props("outlined rounded autogrow").classes("w-full")
             dur_in = ui.number("Dauer (Min.)", value=task.base_duration_minutes, min=1, max=1440).props("outlined rounded").classes("w-full")
 
             if tag_options:
@@ -629,6 +691,7 @@ def main_page():
                 db2 = _get_db()
                 t = db2.query(Task).options(joinedload(Task.tags)).get(task_id)
                 t.title = title_in.value.strip()
+                t.description = desc_in.value.strip() or None
                 t.base_duration_minutes = int(dur_in.value)
                 t.is_recurring = len(selected) > 0
                 t.recurrence_rule = _recurrence_days_to_str(selected)
@@ -659,14 +722,40 @@ def main_page():
                 ui.button("Löschen", on_click=delete, icon="delete").props("flat rounded no-caps color=red")
                 with ui.row().classes("gap-2"):
                     ui.button("Abbrechen", on_click=dlg.close).props("flat rounded no-caps")
-                    ui.button("Speichern", on_click=save, color="#6366f1").props("rounded unelevated no-caps")
+                    ui.button("Speichern", on_click=save).props("rounded unelevated no-caps").style("background: #00C2D1; color: white;")
         db.close()
         dlg.open()
 
-    # --------------- Tag management ---------------
+    # --------------- Notes dialog ---------------
+    def _open_notes_dialog(instance_id: str, instance_date: date, task_title: str):
+        db = _get_db()
+        inst = db.query(TaskInstance).get(instance_id)
+        current_note = inst.notes or "" if inst else ""
+        db.close()
+
+        with ui.dialog() as dlg, ui.card().classes("w-[440px] rounded-xl").style("background: #ffffff;"):
+            ui.label("Notiz").classes("text-h6 font-bold").style("color: #0A2540; font-family: Outfit, sans-serif;")
+            ui.label(f"{task_title} – {instance_date.strftime('%d.%m.%Y')}").classes("text-caption mb-2").style("color: #64748b;")
+            note_area = ui.textarea("Notiz", value=current_note).props("outlined rounded autogrow").classes("w-full")
+
+            def save_note():
+                db2 = _get_db()
+                inst2 = db2.query(TaskInstance).get(instance_id)
+                if inst2:
+                    inst2.notes = note_area.value.strip() or None
+                    db2.commit()
+                db2.close()
+                dlg.close()
+                ui.notify("Notiz gespeichert", type="positive")
+                rebuild()
+
+            with ui.row().classes("w-full justify-end gap-2 mt-3"):
+                ui.button("Abbrechen", on_click=dlg.close).props("flat rounded no-caps")
+                ui.button("Speichern", on_click=save_note).props("rounded unelevated no-caps").style("background: #00C2D1; color: white;")
+        dlg.open()
     def _open_manage_tags_dialog():
-        with ui.dialog() as dlg, ui.card().classes("w-[450px] rounded-xl").style("background: rgba(22,33,62,0.95);"):
-            ui.label("Tags verwalten").classes("text-h6 font-bold")
+        with ui.dialog() as dlg, ui.card().classes("w-[450px] rounded-xl").style("background: #ffffff;"):
+            ui.label("Tags verwalten").classes("text-h6 font-bold").style("color: #0A2540; font-family: Outfit, sans-serif;")
             tags_container = ui.column().classes("w-full")
 
             def refresh_tags():
@@ -722,13 +811,13 @@ def main_page():
 
             with ui.row().classes("w-full justify-end gap-2 mt-2"):
                 ui.button("Schließen", on_click=dlg.close).props("flat rounded no-caps")
-                ui.button("Tag erstellen", on_click=add_tag, color="#6366f1", icon="new_label").props("rounded unelevated no-caps")
+                ui.button("Tag erstellen", on_click=add_tag, icon="new_label").props("rounded unelevated no-caps").style("background: #00C2D1; color: white;")
         dlg.open()
 
     # --------------- User management ---------------
     def _open_manage_users_dialog():
-        with ui.dialog() as dlg, ui.card().classes("w-[550px] rounded-xl").style("background: rgba(22,33,62,0.95);"):
-            ui.label("Benutzerverwaltung").classes("text-h6 font-bold")
+        with ui.dialog() as dlg, ui.card().classes("w-[600px] rounded-xl").style("background: #ffffff;"):
+            ui.label("Benutzerverwaltung").classes("text-h6 font-bold").style("color: #0A2540; font-family: Outfit, sans-serif;")
             users_list_container = ui.column().classes("w-full")
 
             def refresh_users_list():
@@ -739,15 +828,17 @@ def main_page():
                     for idx, u in enumerate(all_users):
                         color = _user_color(idx)
                         with ui.card().classes("w-full mb-1 rounded-lg py-2 px-3").style(
-                            f"background: rgba(30,30,50,0.6); border-left: 3px solid {color};"
+                            f"background: #f8fafc; border-left: 3px solid {color};"
                         ):
                             with ui.row().classes("w-full items-center justify-between"):
                                 with ui.row().classes("items-center gap-2"):
                                     ui.html(f'<span class="hrp-user-chip" style="background:{color}">{u.username[:2].upper()}</span>')
                                     ui.label(u.username).classes("font-medium")
-                                    ui.badge(u.role.value, color=("indigo" if u.role == UserRole.ADMIN else "grey")).props("rounded")
+                                    ui.badge(u.role.value, color=("cyan" if u.role == UserRole.ADMIN else "grey")).props("rounded")
+                                    if u.can_self_assign:
+                                        ui.badge("Selbst-Zuweisung", color="teal").props("rounded outline")
                                 with ui.row().classes("items-center gap-2"):
-                                    ui.label(f"{u.daily_capacity_minutes} Min/Tag").classes("text-xs text-gray-400")
+                                    ui.label(f"{u.daily_capacity_minutes} Min/Tag").classes("text-xs").style("color: #64748b;")
                                     if u.username != "admin":
                                         ui.button(icon="delete", on_click=lambda uid=u.id: _delete_user(uid)).props("flat round dense size=sm color=red")
                 db.close()
@@ -765,11 +856,12 @@ def main_page():
             refresh_users_list()
 
             ui.separator().classes("my-3")
-            ui.label("Neuen Benutzer anlegen").classes("text-subtitle1 font-bold")
+            ui.label("Neuen Benutzer anlegen").classes("text-subtitle1 font-bold").style("color: #0A2540;")
             new_user = ui.input("Benutzername").props("outlined rounded dense").classes("w-full")
             new_pw = ui.input("Passwort", password=True).props("outlined rounded dense").classes("w-full")
             new_role = ui.select({"ADMIN": "Admin", "USER": "User"}, value="USER").props("outlined rounded dense").classes("w-full")
             new_cap = ui.number("Kapazität (Min/Tag)", value=480, min=0, max=1440).props("outlined rounded dense").classes("w-full")
+            new_self_assign = ui.checkbox("Darf sich selbst Aufgaben zuweisen", value=False)
 
             def add_user():
                 db = _get_db()
@@ -783,6 +875,7 @@ def main_page():
                     password_hash=hash_password(new_pw.value),
                     role=UserRole(new_role.value),
                     daily_capacity_minutes=int(new_cap.value),
+                    can_self_assign=new_self_assign.value,
                 )
                 db.add(u)
                 db.commit()
@@ -793,7 +886,7 @@ def main_page():
 
             with ui.row().classes("w-full justify-end gap-2 mt-3"):
                 ui.button("Schließen", on_click=dlg.close).props("flat rounded no-caps")
-                ui.button("Benutzer anlegen", on_click=add_user, color="#6366f1", icon="person_add").props("rounded unelevated no-caps")
+                ui.button("Benutzer anlegen", on_click=add_user, icon="person_add").props("rounded unelevated no-caps").style("background: #00C2D1; color: white;")
         dlg.open()
 
     # --------------- Build / Rebuild ---------------
@@ -832,15 +925,15 @@ def main_page():
         with matrix_container:
             if is_admin:
                 with ui.row().classes("gap-2 mb-3"):
-                    ui.button("Aufgabe erstellen", on_click=_open_add_task_dialog, icon="add_task", color="#6366f1").props("rounded unelevated no-caps")
-                    ui.button("Tags", on_click=_open_manage_tags_dialog, icon="label").props("rounded flat no-caps color=white")
-                    ui.button("Benutzer", on_click=_open_manage_users_dialog, icon="group").props("rounded flat no-caps color=white")
+                    ui.button("Aufgabe erstellen", on_click=_open_add_task_dialog, icon="add_task").props("rounded unelevated no-caps").style("background: #00C2D1; color: white;")
+                    ui.button("Tags", on_click=_open_manage_tags_dialog, icon="label").props("rounded flat no-caps").style("color: #0A2540;")
+                    ui.button("Benutzer", on_click=_open_manage_users_dialog, icon="group").props("rounded flat no-caps").style("color: #0A2540;")
 
             if not tasks:
-                with ui.card().classes("w-full rounded-xl py-12").style("background: rgba(22,33,62,0.6);"):
+                with ui.card().classes("w-full rounded-xl py-12").style("background: #ffffff; box-shadow: 0 2px 8px rgba(10,37,64,0.06);"):
                     with ui.column().classes("w-full items-center gap-2"):
                         ui.icon("inbox", size="48px", color="grey")
-                        ui.label("Noch keine Aufgaben erstellt").classes("text-gray-400")
+                        ui.label("Noch keine Aufgaben erstellt").style("color: #64748b;")
                 db.close()
                 return
 
@@ -852,25 +945,25 @@ def main_page():
                     bc, _, _ = CELL_STYLES[key]
                     with ui.row().classes("items-center gap-1"):
                         ui.html(f'<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:{bc}"></span>')
-                        ui.label(lbl).classes("text-xs text-gray-300")
+                        ui.label(lbl).classes("text-xs").style("color: #64748b;")
 
             with ui.element("div").classes("w-full overflow-x-auto rounded-xl").style(
-                "background: rgba(22,33,62,0.5); backdrop-filter: blur(4px);"
+                "background: #ffffff; box-shadow: 0 2px 8px rgba(10,37,64,0.06);"
             ):
                 with ui.element("table").classes("w-full border-collapse text-xs"):
                     with ui.element("thead"):
                         with ui.element("tr"):
-                            with ui.element("th").classes("p-2 text-left font-bold sticky left-0 z-10 min-w-[220px]").style("background: rgba(15,20,40,0.95);"):
-                                ui.label("Aufgabe").classes("text-indigo-300")
+                            with ui.element("th").classes("p-2 text-left font-bold sticky left-0 z-10 min-w-[220px]").style("background: #0A2540;"):
+                                ui.label("Aufgabe").style("color: #00E5FF; font-family: Outfit, sans-serif;")
                             for d in dates:
                                 is_today = d == date.today()
-                                bg = "background: rgba(99,102,241,0.2);" if is_today else "background: rgba(15,20,40,0.95);"
+                                bg = "background: rgba(0,229,255,0.25);" if is_today else "background: #0A2540;"
                                 with ui.element("th").classes("p-2 text-center min-w-[110px] font-bold").style(bg):
                                     weekday = WEEKDAY_LABELS[d.weekday()]
                                     is_weekend = d.weekday() >= 5
-                                    color = "text-indigo-300" if is_today else ("text-orange-300" if is_weekend else "text-gray-300")
-                                    ui.label(weekday).classes(f"{color} text-[11px]")
-                                    ui.label(d.strftime("%d.%m")).classes(color)
+                                    col_style = "color: #00E5FF;" if is_today else ("color: #fb923c;" if is_weekend else "color: #e2e8f0;")
+                                    ui.label(weekday).classes("text-[11px]").style(col_style)
+                                    ui.label(d.strftime("%d.%m")).style(col_style)
 
                     with ui.element("tbody").props('id="task-tbody"'):
                         for task in tasks:
@@ -879,18 +972,20 @@ def main_page():
                             rec_label = "Täglich" if is_daily else (", ".join(WEEKDAY_MAP[dd] for dd in rec_days) if rec_days else "")
 
                             with ui.element("tr").props(f'data-task-id="{task.id}"').classes("cursor-move"):
-                                with ui.element("td").classes("p-2 sticky left-0 z-10 border-b border-gray-700").style("background: rgba(15,20,40,0.95);"):
+                                with ui.element("td").classes("p-2 sticky left-0 z-10 border-b border-gray-200").style("background: #f8fafc;"):
                                     with ui.row().classes("items-center gap-2 no-wrap"):
                                         if is_admin:
                                             ui.icon("drag_indicator", size="16px", color="grey").classes("drag-handle cursor-grab")
-                                        ui.icon("task_alt", size="16px", color="#6366f1")
+                                        ui.icon("task_alt", size="16px").style("color: #00C2D1;")
                                         with ui.column().classes("gap-0"):
                                             with ui.row().classes("items-center gap-1"):
-                                                ui.label(task.title).classes("font-bold text-sm")
+                                                ui.label(task.title).classes("font-bold text-sm").style("color: #0A2540;")
+                                                if task.description:
+                                                    ui.tooltip(task.description)
                                                 if is_admin:
-                                                    ui.button(icon="edit", on_click=lambda tid=task.id: _open_edit_task_dialog(tid)).props("flat round dense size=xs")
+                                                    ui.button(icon="edit", on_click=lambda tid=task.id: _open_edit_task_dialog(tid)).props("flat round dense size=xs").style("color: #00C2D1;")
                                             with ui.row().classes("gap-1 items-center flex-wrap"):
-                                                ui.badge(f"{task.base_duration_minutes} min", color="indigo").props("rounded")
+                                                ui.badge(f"{task.base_duration_minutes} min", color="cyan").props("rounded")
                                                 if rec_label:
                                                     ui.badge(f"🔁 {rec_label}", color="grey").props("rounded outline")
                                                 _render_tags(task.tags)
@@ -902,9 +997,9 @@ def main_page():
                                     is_today = d == date.today()
                                     cell_bg = f"background: {bg_c}; border-left: 3px solid {border_c};"
                                     if is_today:
-                                        cell_bg += " box-shadow: inset 0 0 0 1px rgba(99,102,241,0.3);"
+                                        cell_bg += " box-shadow: inset 0 0 0 2px rgba(0,194,209,0.4);"
 
-                                    with ui.element("td").classes("p-1 text-center align-top border-b border-gray-700/50 hrp-matrix-cell").style(cell_bg):
+                                    with ui.element("td").classes("p-1 text-center align-top border-b border-gray-100 hrp-matrix-cell").style(cell_bg):
                                         _build_cell(task, d, inst, users_all, status)
 
             if is_admin:
@@ -940,14 +1035,17 @@ def main_page():
             if is_admin:
                 def activate(t_id=task.id, dt=d):
                     db2 = _get_db()
+                    task_obj = db2.query(Task).get(t_id)
+                    if task_obj and task_obj.is_recurring:
+                        _remove_excluded_date(db2, task_obj, dt)
                     new_inst = TaskInstance(id=str(uuid.uuid4()), task_id=t_id, date=dt, status=TaskStatus.OPEN)
                     db2.add(new_inst)
                     db2.commit()
                     db2.close()
                     rebuild()
-                ui.button(icon="add", on_click=activate).props("flat round dense size=sm color=grey")
+                ui.button(icon="add", on_click=activate).props("flat round dense size=sm").style("color: #00C2D1;")
             else:
-                ui.label("–").classes("text-gray-700")
+                ui.label("–").style("color: #94a3b8;")
         else:
             completed = inst.status == TaskStatus.COMPLETED
             assigned_ids = [u.id for u in inst.assigned_users]
@@ -967,7 +1065,32 @@ def main_page():
                 if is_admin:
                     def open_assign(iid=inst.id, dt=d, t=task, aids=assigned_ids):
                         _open_assign_dialog(iid, dt, t, users_all, aids)
-                    ui.button(icon="group_add", on_click=open_assign).props("flat round dense size=xs color=indigo")
+                    ui.button(icon="group_add", on_click=open_assign).props("flat round dense size=xs").style("color: #00C2D1;")
+                elif user.can_self_assign:
+                    if user.id in assigned_ids:
+                        def remove_self(iid=inst.id, uid=user.id):
+                            db2 = _get_db()
+                            inst2 = db2.query(TaskInstance).options(joinedload(TaskInstance.assigned_users)).get(iid)
+                            if inst2:
+                                u_obj = db2.query(User).get(uid)
+                                if u_obj and u_obj in inst2.assigned_users:
+                                    inst2.assigned_users.remove(u_obj)
+                                    db2.commit()
+                            db2.close()
+                            rebuild()
+                        ui.button(icon="person_remove", on_click=remove_self).props("flat round dense size=xs color=orange")
+                    else:
+                        def add_self(iid=inst.id, uid=user.id):
+                            db2 = _get_db()
+                            inst2 = db2.query(TaskInstance).options(joinedload(TaskInstance.assigned_users)).get(iid)
+                            if inst2:
+                                u_obj = db2.query(User).get(uid)
+                                if u_obj and u_obj not in inst2.assigned_users:
+                                    inst2.assigned_users.append(u_obj)
+                                    db2.commit()
+                            db2.close()
+                            rebuild()
+                        ui.button(icon="person_add", on_click=add_self).props("flat round dense size=xs").style("color: #00C2D1;")
 
                 if is_admin or user.id in assigned_ids:
                     def toggle_status(iid=inst.id):
@@ -982,11 +1105,20 @@ def main_page():
                     icon_name = "check_circle" if completed else "radio_button_unchecked"
                     ui.button(icon=icon_name, on_click=toggle_status).props(f"flat round dense size=xs color={'green' if completed else 'grey'}")
 
+                # Notes button
+                def open_notes(iid=inst.id, dt=d, tt=task.title):
+                    _open_notes_dialog(iid, dt, tt)
+                note_color = "#00C2D1" if inst.notes else "#94a3b8"
+                ui.button(icon="sticky_note_2", on_click=open_notes).props("flat round dense size=xs").style(f"color: {note_color};")
+
                 if is_admin:
-                    def deactivate(iid=inst.id):
+                    def deactivate(iid=inst.id, dt=d, t_id=task.id):
                         db2 = _get_db()
                         instance = db2.query(TaskInstance).get(iid)
                         if instance:
+                            task_obj = db2.query(Task).get(t_id)
+                            if task_obj and task_obj.is_recurring:
+                                _add_excluded_date(db2, task_obj, dt)
                             db2.delete(instance)
                             db2.commit()
                         db2.close()
@@ -1020,15 +1152,15 @@ def main_page():
         with mobile_container:
             if is_admin:
                 with ui.row().classes("gap-2 mb-3"):
-                    ui.button("Aufgabe erstellen", on_click=_open_add_task_dialog, icon="add_task", color="#6366f1").props("rounded unelevated no-caps")
-                    ui.button("Tags", on_click=_open_manage_tags_dialog, icon="label").props("rounded flat no-caps color=white")
-                    ui.button("Benutzer", on_click=_open_manage_users_dialog, icon="group").props("rounded flat no-caps color=white")
+                    ui.button("Aufgabe erstellen", on_click=_open_add_task_dialog, icon="add_task").props("rounded unelevated no-caps").style("background: #00C2D1; color: white;")
+                    ui.button("Tags", on_click=_open_manage_tags_dialog, icon="label").props("rounded flat no-caps").style("color: #0A2540;")
+                    ui.button("Benutzer", on_click=_open_manage_users_dialog, icon="group").props("rounded flat no-caps").style("color: #0A2540;")
 
             if not tasks:
-                with ui.card().classes("w-full rounded-xl py-12").style("background: rgba(22,33,62,0.6);"):
+                with ui.card().classes("w-full rounded-xl py-12").style("background: #ffffff; box-shadow: 0 2px 8px rgba(10,37,64,0.06);"):
                     with ui.column().classes("w-full items-center gap-2"):
                         ui.icon("inbox", size="48px", color="grey")
-                        ui.label("Noch keine Aufgaben erstellt").classes("text-gray-400")
+                        ui.label("Noch keine Aufgaben erstellt").style("color: #64748b;")
                 db.close()
                 return
 
@@ -1040,7 +1172,7 @@ def main_page():
                     bc, _, _ = CELL_STYLES[key]
                     with ui.row().classes("items-center gap-1"):
                         ui.html(f'<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:{bc}"></span>')
-                        ui.label(lbl).classes("text-xs text-gray-300")
+                        ui.label(lbl).classes("text-xs").style("color: #64748b;")
 
             for d in sorted_dates:
                 is_today = d == today
@@ -1048,9 +1180,9 @@ def main_page():
 
                 with ui.row().classes("items-center gap-2 mt-5 mb-2"):
                     if is_today:
-                        ui.badge("HEUTE", color="indigo").props("rounded")
-                    day_color = "text-indigo-300" if is_today else ("text-orange-300" if is_weekend else "text-gray-200")
-                    ui.label(f"{WEEKDAY_LABELS[d.weekday()]}, {d.strftime('%d.%m.%Y')}").classes(f"text-subtitle1 font-bold {day_color}")
+                        ui.badge("HEUTE", color="cyan").props("rounded")
+                    day_style = "color: #00C2D1; font-family: Outfit, sans-serif;" if is_today else ("color: #f97316; font-family: Outfit, sans-serif;" if is_weekend else "color: #0A2540; font-family: Outfit, sans-serif;")
+                    ui.label(f"{WEEKDAY_LABELS[d.weekday()]}, {d.strftime('%d.%m.%Y')}").classes("text-subtitle1 font-bold").style(day_style)
 
                 for task in tasks:
                     inst = inst_map.get((task.id, d))
@@ -1058,7 +1190,7 @@ def main_page():
                     border_c, bg_c, icon_c = CELL_STYLES[status]
                     tags = task_tag_map.get(task.id, [])
 
-                    with ui.card().classes("w-full mb-2 hrp-card").style(f"border-left: 4px solid {border_c}; background: {bg_c};"):
+                    with ui.card().classes("w-full mb-2 hrp-card").style(f"border-left: 4px solid {border_c};"):
                         with ui.row().classes("items-center justify-between w-full"):
                             with ui.row().classes("items-center gap-3"):
                                 if status == "completed":
@@ -1066,21 +1198,25 @@ def main_page():
                                 elif status == "overdue":
                                     ui.icon("warning", size="24px", color="#ef4444")
                                 elif status == "assigned":
-                                    ui.icon("person", size="24px", color="#3b82f6")
+                                    ui.icon("person", size="24px").style("color: #00C2D1;")
                                 elif status == "unassigned":
                                     ui.icon("help_outline", size="24px", color="#f59e0b")
                                 else:
-                                    ui.icon("radio_button_unchecked", size="24px", color="#4b5563")
+                                    ui.icon("radio_button_unchecked", size="24px", color="#94a3b8")
 
                                 with ui.column().classes("gap-0"):
-                                    ui.label(task.title).classes("text-subtitle2 font-bold")
+                                    ui.label(task.title).classes("text-subtitle2 font-bold").style("color: #0A2540;")
+                                    if task.description:
+                                        ui.label(task.description).classes("text-xs italic").style("color: #64748b;")
                                     with ui.row().classes("items-center gap-2 flex-wrap"):
-                                        ui.badge(f"{task.base_duration_minutes} min", color="indigo").props("rounded")
+                                        ui.badge(f"{task.base_duration_minutes} min", color="cyan").props("rounded")
                                         _render_tags(tags)
                                         if inst:
                                             _render_user_chips(inst.assigned_users, users_all)
+                                            if inst.notes:
+                                                ui.html(f'<span style="font-size:10px;color:#64748b;">📝 {inst.notes[:40]}{"..." if len(inst.notes) > 40 else ""}</span>')
                                         elif status == "inactive":
-                                            ui.label("Nicht aktiv").classes("text-xs text-gray-500 italic")
+                                            ui.label("Nicht aktiv").classes("text-xs italic").style("color: #94a3b8;")
 
                             with ui.row().classes("items-center gap-1"):
                                 if inst is not None:
@@ -1088,7 +1224,32 @@ def main_page():
                                     if is_admin:
                                         def open_a(iid=inst.id, dt=d, t=task, aids=assigned_ids):
                                             _open_assign_dialog(iid, dt, t, users_all, aids)
-                                        ui.button(icon="group_add", on_click=open_a).props("flat round dense color=indigo")
+                                        ui.button(icon="group_add", on_click=open_a).props("flat round dense").style("color: #00C2D1;")
+                                    elif user.can_self_assign:
+                                        if user.id in assigned_ids:
+                                            def rem_self_l(iid=inst.id, uid=user.id):
+                                                db2 = _get_db()
+                                                i2 = db2.query(TaskInstance).options(joinedload(TaskInstance.assigned_users)).get(iid)
+                                                if i2:
+                                                    uo = db2.query(User).get(uid)
+                                                    if uo and uo in i2.assigned_users:
+                                                        i2.assigned_users.remove(uo)
+                                                        db2.commit()
+                                                db2.close()
+                                                rebuild()
+                                            ui.button(icon="person_remove", on_click=rem_self_l).props("flat round dense color=orange")
+                                        else:
+                                            def add_self_l(iid=inst.id, uid=user.id):
+                                                db2 = _get_db()
+                                                i2 = db2.query(TaskInstance).options(joinedload(TaskInstance.assigned_users)).get(iid)
+                                                if i2:
+                                                    uo = db2.query(User).get(uid)
+                                                    if uo and uo not in i2.assigned_users:
+                                                        i2.assigned_users.append(uo)
+                                                        db2.commit()
+                                                db2.close()
+                                                rebuild()
+                                            ui.button(icon="person_add", on_click=add_self_l).props("flat round dense").style("color: #00C2D1;")
 
                                     if is_admin or user.id in assigned_ids:
                                         completed = inst.status == TaskStatus.COMPLETED
@@ -1104,13 +1265,22 @@ def main_page():
                                         if completed:
                                             ui.button("Erledigt", on_click=toggle_list, icon="check_circle", color="green").props("rounded unelevated no-caps size=sm")
                                         else:
-                                            ui.button("Erledigen", on_click=toggle_list, icon="radio_button_unchecked", color="#6366f1").props("rounded unelevated no-caps size=sm")
+                                            ui.button("Erledigen", on_click=toggle_list, icon="radio_button_unchecked").props("rounded unelevated no-caps size=sm").style("background: #00C2D1; color: white;")
+
+                                    # Notes button in list
+                                    def open_notes_l(iid=inst.id, dt=d, tt=task.title):
+                                        _open_notes_dialog(iid, dt, tt)
+                                    note_col = "#00C2D1" if inst.notes else "#94a3b8"
+                                    ui.button(icon="sticky_note_2", on_click=open_notes_l).props("flat round dense").style(f"color: {note_col};")
 
                                     if is_admin:
-                                        def deactivate_l(iid=inst.id):
+                                        def deactivate_l(iid=inst.id, dt=d, t_id=task.id):
                                             db2 = _get_db()
                                             instance = db2.query(TaskInstance).get(iid)
                                             if instance:
+                                                task_obj = db2.query(Task).get(t_id)
+                                                if task_obj and task_obj.is_recurring:
+                                                    _add_excluded_date(db2, task_obj, dt)
                                                 db2.delete(instance)
                                                 db2.commit()
                                             db2.close()
@@ -1120,12 +1290,15 @@ def main_page():
                                     if is_admin:
                                         def activate_l(t_id=task.id, dt=d):
                                             db2 = _get_db()
+                                            task_obj = db2.query(Task).get(t_id)
+                                            if task_obj and task_obj.is_recurring:
+                                                _remove_excluded_date(db2, task_obj, dt)
                                             new_inst = TaskInstance(id=str(uuid.uuid4()), task_id=t_id, date=dt, status=TaskStatus.OPEN)
                                             db2.add(new_inst)
                                             db2.commit()
                                             db2.close()
                                             rebuild()
-                                        ui.button("Aktivieren", on_click=activate_l, icon="add_circle_outline").props("flat rounded no-caps size=sm color=indigo")
+                                        ui.button("Aktivieren", on_click=activate_l, icon="add_circle_outline").props("flat rounded no-caps size=sm").style("color: #00C2D1;")
 
         db.close()
 
@@ -1167,38 +1340,38 @@ def main_page():
             # --------------- Unassigned tasks today ---------------
             with ui.row().classes("items-center gap-2 mt-2 mb-3"):
                 ui.icon("assignment_late", size="28px", color="#f59e0b")
-                ui.label("Offene Aufgaben ohne Zuweisung").classes("text-h6 font-bold")
+                ui.label("Offene Aufgaben ohne Zuweisung").classes("text-h6 font-bold").style("color: #0A2540; font-family: Outfit, sans-serif;")
                 if unassigned_today:
                     ui.badge(str(len(unassigned_today)), color="orange").props("rounded")
 
             if not unassigned_today:
-                with ui.card().classes("w-full rounded-xl py-6").style("background: rgba(16,185,129,0.1); border-left: 4px solid #10b981;"):
+                with ui.card().classes("w-full rounded-xl py-6").style("background: rgba(16,185,129,0.08); border-left: 4px solid #10b981;"):
                     with ui.row().classes("items-center gap-3 px-4"):
                         ui.icon("check_circle", size="32px", color="#10b981")
-                        ui.label("Alle heutigen Aufgaben sind zugewiesen!").classes("text-subtitle1 font-medium text-green-300")
+                        ui.label("Alle heutigen Aufgaben sind zugewiesen!").classes("text-subtitle1 font-medium").style("color: #10b981;")
             else:
                 for inst in unassigned_today:
                     border_c, bg_c, icon_c = CELL_STYLES["unassigned"]
-                    with ui.card().classes("w-full mb-2 hrp-card").style(f"border-left: 4px solid {border_c}; background: {bg_c};"):
+                    with ui.card().classes("w-full mb-2 hrp-card").style(f"border-left: 4px solid {border_c};"):
                         with ui.row().classes("items-center justify-between w-full"):
                             with ui.row().classes("items-center gap-3"):
                                 ui.icon("help_outline", size="24px", color="#f59e0b")
                                 with ui.column().classes("gap-0"):
-                                    ui.label(inst.task.title).classes("text-subtitle2 font-bold")
+                                    ui.label(inst.task.title).classes("text-subtitle2 font-bold").style("color: #0A2540;")
                                     with ui.row().classes("items-center gap-2 flex-wrap"):
-                                        ui.badge(f"{inst.task.base_duration_minutes} min", color="indigo").props("rounded")
+                                        ui.badge(f"{inst.task.base_duration_minutes} min", color="cyan").props("rounded")
                                         _render_tags(inst.task.tags)
                             if is_admin:
                                 def open_a(iid=inst.id, t=inst.task, aids=[]):
                                     _open_assign_dialog(iid, today, t, users_all, aids)
-                                ui.button("Zuweisen", on_click=open_a, icon="group_add", color="#6366f1").props("rounded unelevated no-caps size=sm")
+                                ui.button("Zuweisen", on_click=open_a, icon="group_add").props("rounded unelevated no-caps size=sm").style("background: #00C2D1; color: white;")
 
             ui.separator().classes("my-4")
 
             # --------------- User cards ---------------
             with ui.row().classes("items-center gap-2 mb-3"):
-                ui.icon("group", size="28px", color="#6366f1")
-                ui.label("Haushaltsmitglieder").classes("text-h6 font-bold")
+                ui.icon("group", size="28px").style("color: #00C2D1;")
+                ui.label("Haushaltsmitglieder").classes("text-h6 font-bold").style("color: #0A2540; font-family: Outfit, sans-serif;")
 
             user_detail_container = ui.column().classes("w-full")
 
@@ -1219,27 +1392,27 @@ def main_page():
 
                 with user_detail_container:
                     with ui.card().classes("w-full rounded-xl").style(
-                        f"background: rgba(22,33,62,0.85); border-top: 4px solid {color}; backdrop-filter: blur(6px);"
+                        f"background: #ffffff; border-top: 4px solid {color}; box-shadow: 0 4px 16px rgba(10,37,64,0.12);"
                     ) as detail_card:
                         with ui.row().classes("w-full items-center justify-between mb-3"):
                             with ui.row().classes("items-center gap-3"):
                                 ui.html(f'<span class="hrp-user-chip" style="background:{color}; font-size:14px; padding: 4px 14px;">{target_user.username}</span>')
-                                ui.label(f"Kapazität: {target_user.daily_capacity_minutes} Min/Tag").classes("text-sm text-gray-400")
+                                ui.label(f"Kapazität: {target_user.daily_capacity_minutes} Min/Tag").classes("text-sm").style("color: #64748b;")
                             ui.button(icon="close", on_click=lambda: user_detail_container.clear()).props("flat round dense color=grey")
 
                         def _render_task_section(title: str, icon_name: str, icon_color: str, task_list: list[TaskInstance], show_date: bool = False):
                             with ui.row().classes("items-center gap-2 mt-2 mb-1"):
                                 ui.icon(icon_name, size="20px", color=icon_color)
-                                ui.label(title).classes("text-subtitle2 font-bold")
+                                ui.label(title).classes("text-subtitle2 font-bold").style("color: #0A2540;")
                                 ui.badge(str(len(task_list)), color="grey").props("rounded")
                             if not task_list:
-                                ui.label("Keine Aufgaben").classes("text-xs text-gray-500 italic ml-7")
+                                ui.label("Keine Aufgaben").classes("text-xs italic ml-7").style("color: #94a3b8;")
                             else:
                                 for inst in task_list:
                                     status = _cell_status(inst, inst.date)
                                     border_c, bg_c, _ = CELL_STYLES[status]
                                     with ui.card().classes("w-full mb-1 py-1 px-3 rounded-lg").style(
-                                        f"background: {bg_c}; border-left: 3px solid {border_c};"
+                                        f"background: #f8fafc; border-left: 3px solid {border_c};"
                                     ):
                                         with ui.row().classes("items-center justify-between w-full"):
                                             with ui.row().classes("items-center gap-2"):
@@ -1248,12 +1421,12 @@ def main_page():
                                                 elif status == "overdue":
                                                     ui.icon("warning", size="18px", color="#ef4444")
                                                 else:
-                                                    ui.icon("radio_button_unchecked", size="18px", color="#3b82f6")
-                                                ui.label(inst.task.title).classes("text-sm font-medium")
-                                                ui.badge(f"{inst.task.base_duration_minutes} min", color="indigo").props("rounded")
+                                                    ui.icon("radio_button_unchecked", size="18px").style("color: #00C2D1;")
+                                                ui.label(inst.task.title).classes("text-sm font-medium").style("color: #0A2540;")
+                                                ui.badge(f"{inst.task.base_duration_minutes} min", color="cyan").props("rounded")
                                                 _render_tags(inst.task.tags)
                                                 if show_date:
-                                                    ui.label(inst.date.strftime("%d.%m")).classes("text-xs text-gray-400")
+                                                    ui.label(inst.date.strftime("%d.%m")).classes("text-xs").style("color: #64748b;")
                                             if is_admin or user.id in [u.id for u in inst.assigned_users]:
                                                 completed = inst.status == TaskStatus.COMPLETED
                                                 def toggle_s(iid=inst.id):
@@ -1279,7 +1452,7 @@ def main_page():
                         today_mins = sum(i.task.base_duration_minutes / max(len(i.assigned_users), 1) for i in user_today)
                         with ui.row().classes("mt-3 items-center gap-2"):
                             ui.icon("schedule", size="18px", color=color)
-                            ui.label(f"Heute geplant: {today_mins:.0f} / {target_user.daily_capacity_minutes} Min").classes("text-sm font-medium")
+                            ui.label(f"Heute geplant: {today_mins:.0f} / {target_user.daily_capacity_minutes} Min").classes("text-sm font-medium").style("color: #0A2540;")
 
                 db2.close()
 
@@ -1297,17 +1470,17 @@ def main_page():
                     )
 
                     with ui.card().classes("hrp-card cursor-pointer flex-1 min-w-[180px]").style(
-                        f"background: rgba(22,33,62,0.7); border-top: 3px solid {color};"
+                        f"border-top: 3px solid {color};"
                     ).on("click", lambda uid=u.id: _open_user_detail(uid)):
                         with ui.column().classes("items-center gap-2 py-2"):
                             ui.html(f'<span class="hrp-user-chip" style="background:{color}; font-size:14px; padding: 4px 14px;">{u.username}</span>')
                             with ui.row().classes("gap-3"):
                                 with ui.column().classes("items-center gap-0"):
-                                    ui.label(f"{user_today_count}").classes("text-lg font-bold")
-                                    ui.label("Aufgaben").classes("text-[10px] text-gray-400 uppercase")
+                                    ui.label(f"{user_today_count}").classes("text-lg font-bold").style("color: #0A2540;")
+                                    ui.label("Aufgaben").classes("text-[10px] uppercase").style("color: #64748b;")
                                 with ui.column().classes("items-center gap-0"):
-                                    ui.label(f"{today_mins:.0f}").classes("text-lg font-bold")
-                                    ui.label("Minuten").classes("text-[10px] text-gray-400 uppercase")
+                                    ui.label(f"{today_mins:.0f}").classes("text-lg font-bold").style("color: #0A2540;")
+                                    ui.label("Minuten").classes("text-[10px] uppercase").style("color: #64748b;")
                             if user_overdue_count > 0:
                                 ui.badge(f"{user_overdue_count} überfällig", color="red").props("rounded")
 
@@ -1319,16 +1492,18 @@ def main_page():
         db = _get_db()
         dates = get_dates()
         users_all = db.query(User).order_by(User.username).all()
-        minutes_map = _compute_user_minutes(db, dates, users_all)
+        # Exclude the system "admin" account from work resource calculations
+        resource_users = [u for u in users_all if u.username != "admin"]
+        minutes_map = _compute_user_minutes(db, dates, resource_users)
 
         with stats_container:
             with ui.row().classes("items-center gap-2 mt-2 mb-3"):
-                ui.icon("bar_chart", size="28px", color="#6366f1")
-                ui.label("Statistik").classes("text-h6 font-bold")
+                ui.icon("bar_chart", size="28px").style("color: #00C2D1;")
+                ui.label("Statistik").classes("text-h6 font-bold").style("color: #0A2540; font-family: Outfit, sans-serif;")
 
             total_all = 0.0
             with ui.row().classes("w-full gap-3 flex-wrap mb-4"):
-                for idx, u in enumerate(users_all):
+                for idx, u in enumerate(resource_users):
                     total = sum(minutes_map[u.id].values())
                     total_all += total
                     avg_per_day = total / max(len(dates), 1)
@@ -1340,62 +1515,62 @@ def main_page():
                     with ui.card().classes("hrp-stat-card flex-1 min-w-[200px]").style(f"border-top: 3px solid {border_color};"):
                         with ui.row().classes("items-center gap-2 mb-2"):
                             ui.html(f'<span class="hrp-user-chip" style="background:{color}">{u.username[:2].upper()}</span>')
-                            ui.label(u.username).classes("font-bold")
+                            ui.label(u.username).classes("font-bold").style("color: #0A2540;")
                         with ui.row().classes("gap-4 flex-wrap"):
                             with ui.column().classes("gap-0"):
-                                ui.label("Geplant").classes("text-[10px] text-gray-400 uppercase")
-                                ui.label(f"{total:.0f} min").classes("text-lg font-bold")
+                                ui.label("Geplant").classes("text-[10px] uppercase").style("color: #64748b;")
+                                ui.label(f"{total:.0f} min").classes("text-lg font-bold").style("color: #0A2540;")
                             with ui.column().classes("gap-0"):
-                                ui.label("Ø/Tag").classes("text-[10px] text-gray-400 uppercase")
-                                ui.label(f"{avg_per_day:.0f} min").classes("text-lg font-bold")
+                                ui.label("Ø/Tag").classes("text-[10px] uppercase").style("color: #64748b;")
+                                ui.label(f"{avg_per_day:.0f} min").classes("text-lg font-bold").style("color: #0A2540;")
                             with ui.column().classes("gap-0"):
-                                ui.label("Auslastung").classes("text-[10px] text-gray-400 uppercase")
-                                util_color = "text-red" if utilization > 100 else ("text-yellow-400" if utilization > 80 else "text-green-400")
-                                ui.label(f"{utilization:.0f}%").classes(f"text-lg font-bold {util_color}")
+                                ui.label("Auslastung").classes("text-[10px] uppercase").style("color: #64748b;")
+                                util_color = "#ef4444" if utilization > 100 else ("#f59e0b" if utilization > 80 else "#10b981")
+                                ui.label(f"{utilization:.0f}%").classes("text-lg font-bold").style(f"color: {util_color};")
                             if days_over > 0:
                                 with ui.column().classes("gap-0"):
-                                    ui.label("Überbucht").classes("text-[10px] text-red uppercase")
-                                    ui.label(f"{days_over} Tage").classes("text-lg font-bold text-red")
+                                    ui.label("Überbucht").classes("text-[10px] uppercase").style("color: #ef4444;")
+                                    ui.label(f"{days_over} Tage").classes("text-lg font-bold").style("color: #ef4444;")
 
-            with ui.card().classes("w-full hrp-stat-card px-4 py-3").style("border-left: 3px solid #6366f1;"):
+            with ui.card().classes("w-full hrp-stat-card px-4 py-3").style("border-left: 3px solid #00C2D1;"):
                 with ui.row().classes("items-center gap-2"):
-                    ui.icon("functions", size="20px", color="#6366f1")
-                    ui.label(f"Gesamttotal: {total_all:.0f} Minuten im Zeitraum").classes("font-bold")
+                    ui.icon("functions", size="20px").style("color: #00C2D1;")
+                    ui.label(f"Gesamttotal: {total_all:.0f} Minuten im Zeitraum").classes("font-bold").style("color: #0A2540;")
 
-            if is_admin and users_all:
+            if is_admin and resource_users:
                 with ui.expansion("Tagesdetails anzeigen", icon="table_chart").classes("w-full mt-3").props("dense"):
-                    with ui.element("div").classes("overflow-x-auto rounded-lg mt-2").style("background: rgba(15,20,40,0.6);"):
+                    with ui.element("div").classes("overflow-x-auto rounded-lg mt-2").style("background: #ffffff; box-shadow: 0 2px 8px rgba(10,37,64,0.06);"):
                         with ui.element("table").classes("border-collapse text-xs w-full"):
                             with ui.element("thead"):
                                 with ui.element("tr"):
-                                    with ui.element("th").classes("p-2 text-left font-bold").style("background: rgba(15,20,40,0.95);"):
-                                        ui.label("Benutzer")
+                                    with ui.element("th").classes("p-2 text-left font-bold").style("background: #0A2540;"):
+                                        ui.label("Benutzer").style("color: #00E5FF;")
                                     for d in dates:
                                         is_today = d == date.today()
-                                        bg = "background: rgba(99,102,241,0.15);" if is_today else "background: rgba(15,20,40,0.95);"
+                                        bg = "background: rgba(0,229,255,0.2);" if is_today else "background: #0A2540;"
                                         with ui.element("th").classes("p-2 text-center").style(bg):
-                                            ui.label(d.strftime("%d.%m"))
+                                            ui.label(d.strftime("%d.%m")).style("color: #e2e8f0;")
                             with ui.element("tbody"):
-                                for idx, u in enumerate(users_all):
+                                for idx, u in enumerate(resource_users):
                                     color = _user_color(idx)
                                     with ui.element("tr"):
-                                        with ui.element("td").classes("p-2 border-b border-gray-700").style(f"background: rgba(15,20,40,0.95); border-left: 3px solid {color};"):
-                                            ui.label(u.username).classes("font-medium")
+                                        with ui.element("td").classes("p-2 border-b border-gray-200").style(f"background: #f8fafc; border-left: 3px solid {color};"):
+                                            ui.label(u.username).classes("font-medium").style("color: #0A2540;")
                                         for d in dates:
                                             val = minutes_map[u.id][d]
                                             over = val > u.daily_capacity_minutes
                                             is_today = d == date.today()
                                             style = ""
                                             if over:
-                                                style = "background: rgba(239,68,68,0.2);"
+                                                style = "background: rgba(239,68,68,0.1);"
                                             elif is_today:
-                                                style = "background: rgba(99,102,241,0.05);"
-                                            with ui.element("td").classes("p-2 text-center border-b border-gray-700/50").style(style):
+                                                style = "background: rgba(0,194,209,0.05);"
+                                            with ui.element("td").classes("p-2 text-center border-b border-gray-100").style(style):
                                                 if val > 0:
-                                                    text_cls = "font-bold text-red" if over else ""
-                                                    ui.label(f"{val:.0f}").classes(text_cls)
+                                                    col = "#ef4444" if over else "#0A2540"
+                                                    ui.label(f"{val:.0f}").style(f"color: {col}; {'font-weight: bold;' if over else ''}")
                                                 else:
-                                                    ui.label("–").classes("text-gray-700")
+                                                    ui.label("–").style("color: #94a3b8;")
         db.close()
 
     # Initial build
