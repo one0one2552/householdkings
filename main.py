@@ -293,6 +293,7 @@ CUSTOM_CSS = """
     --owl-bg: #ffffff;
     --owl-surface: #ffffff;
     --owl-surface-soft: #f7f7f7;
+    --owl-strong-surface: #1A1A1B;
     --owl-text: #1A1A1B;
     --owl-text-soft: #343438;
     --owl-muted: #64646a;
@@ -308,20 +309,21 @@ CUSTOM_CSS = """
 }
 
 body[data-theme="owl_dark"] {
-    --owl-bg: #1A1A1B;
-    --owl-surface: #232326;
-    --owl-surface-soft: #2a2a2d;
-    --owl-text: #F0F0F0;
-    --owl-text-soft: #dddddd;
-    --owl-muted: #b7b7b7;
-    --owl-structure: #a0a0a0;
+    --owl-bg: #1f2126;
+    --owl-surface: #2b2f38;
+    --owl-surface-soft: #353b46;
+    --owl-strong-surface: #3a414f;
+    --owl-text: #f7f8fa;
+    --owl-text-soft: #e9edf3;
+    --owl-muted: #c8ced8;
+    --owl-structure: #aab4c2;
     --owl-accent: #FFB000;
-    --owl-accent-soft: rgba(255,176,0,0.2);
+    --owl-accent-soft: rgba(255,176,0,0.24);
     --owl-accent-strong: #ffbf33;
-    --owl-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
-    --owl-border: rgba(160, 160, 160, 0.45);
-    --owl-header-bg: rgba(26, 26, 27, 0.94);
-    --owl-header-text: #F0F0F0;
+    --owl-shadow: 0 18px 50px rgba(0, 0, 0, 0.52);
+    --owl-border: rgba(151, 160, 173, 0.55);
+    --owl-header-bg: rgba(28, 31, 37, 0.95);
+    --owl-header-text: #f7f8fa;
     --owl-text-on-accent: #1A1A1B;
 }
 
@@ -329,6 +331,7 @@ body[data-theme="industrial_light"] {
     --owl-bg: #f2f2f1;
     --owl-surface: #ffffff;
     --owl-surface-soft: #f0f0ee;
+    --owl-strong-surface: #202126;
     --owl-text: #19191a;
     --owl-text-soft: #2f2f33;
     --owl-muted: #5b5b60;
@@ -345,20 +348,26 @@ body[data-theme="industrial_light"] {
 
 body[data-theme="carbon_dark"] {
     --owl-bg: #101114;
-    --owl-surface: #181a1f;
-    --owl-surface-soft: #20242b;
-    --owl-text: #f3f4f6;
-    --owl-text-soft: #e6e8ec;
-    --owl-muted: #b8bec8;
-    --owl-structure: #8f98a8;
+    --owl-surface: #262c35;
+    --owl-surface-soft: #303845;
+    --owl-strong-surface: #3a4352;
+    --owl-text: #f9fafb;
+    --owl-text-soft: #eef1f6;
+    --owl-muted: #d1d8e2;
+    --owl-structure: #b2becf;
     --owl-accent: #ffb000;
-    --owl-accent-soft: rgba(255,176,0,0.24);
+    --owl-accent-soft: rgba(255,176,0,0.27);
     --owl-accent-strong: #ffc23d;
-    --owl-shadow: 0 20px 54px rgba(0, 0, 0, 0.48);
-    --owl-border: rgba(112, 121, 138, 0.44);
-    --owl-header-bg: rgba(16, 17, 20, 0.94);
-    --owl-header-text: #f3f4f6;
+    --owl-shadow: 0 20px 54px rgba(0, 0, 0, 0.56);
+    --owl-border: rgba(138, 151, 171, 0.56);
+    --owl-header-bg: rgba(22, 24, 30, 0.95);
+    --owl-header-text: #f9fafb;
     --owl-text-on-accent: #161616;
+}
+
+body[data-theme="owl_dark"],
+body[data-theme="carbon_dark"] {
+    color-scheme: dark;
 }
 
 body, .q-page {
@@ -536,14 +545,16 @@ body[data-theme="carbon_dark"] .q-field__input {
 }
 
 /* Map legacy inline colors to the new theme palette */
-[style*="#0A2540"] { color: var(--owl-text) !important; }
-[style*="#64748b"] { color: var(--owl-muted) !important; }
-[style*="#94a3b8"] { color: var(--owl-structure) !important; }
-[style*="#00E5FF"], [style*="color: #00C2D1"] { color: var(--owl-accent) !important; }
-[style*="background: #00C2D1"] { background: var(--owl-accent) !important; }
-[style*="background: #ffffff"] { background: var(--owl-surface) !important; }
-[style*="background: #f8fafc"] { background: var(--owl-surface-soft) !important; }
-[style*="color: #e2e8f0"] { color: var(--owl-text-soft) !important; }
+[style*="color: #0A2540"], [style*="color:#0A2540"] { color: var(--owl-text) !important; }
+[style*="color: #64748b"], [style*="color:#64748b"] { color: var(--owl-muted) !important; }
+[style*="color: #94a3b8"], [style*="color:#94a3b8"] { color: var(--owl-structure) !important; }
+[style*="color: #00E5FF"], [style*="color:#00E5FF"], [style*="color: #00C2D1"], [style*="color:#00C2D1"] { color: var(--owl-accent) !important; }
+[style*="background: #0A2540"], [style*="background:#0A2540"] { background: var(--owl-strong-surface) !important; }
+[style*="background: #00C2D1"], [style*="background:#00C2D1"] { background: var(--owl-accent) !important; }
+[style*="background: #ffffff"], [style*="background:#ffffff"] { background: var(--owl-surface) !important; }
+[style*="background: #f8fafc"], [style*="background:#f8fafc"] { background: var(--owl-surface-soft) !important; }
+[style*="color: #e2e8f0"], [style*="color:#e2e8f0"] { color: var(--owl-text-soft) !important; }
+[style*="background: rgba(0,229,255,0.25)"], [style*="background: rgba(0,229,255,0.2)"] { background: var(--owl-accent-soft) !important; }
 </style>
 """
 
