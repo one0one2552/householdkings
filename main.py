@@ -411,13 +411,11 @@ def main_page():
         "display": "matrix",
         "custom_start": _wstart,
         "custom_end": _wstart + timedelta(days=6),
+        "start_today": False,
     }
 
     def get_dates():
-        if state["view_mode"] == "week":
-            return _week_dates(state["ref_date"])
-        if state["view_mode"] == "2weeks":
-            return _two_week_dates(state["ref_date"])
+        today = date.today()
         if state["view_mode"] == "custom":
             s, e = state["custom_start"], state["custom_end"]
             if e < s:
@@ -427,7 +425,19 @@ def main_page():
                 days.append(d)
                 d += timedelta(days=1)
             return days
-        return _month_dates(state["ref_date"])
+        start = today if state["start_today"] else state["ref_date"]
+        if state["view_mode"] == "week":
+            if state["start_today"]:
+                return [today + timedelta(days=i) for i in range(7)]
+            return _week_dates(start)
+        if state["view_mode"] == "2weeks":
+            if state["start_today"]:
+                return [today + timedelta(days=i) for i in range(14)]
+            return _two_week_dates(start)
+        # month
+        if state["start_today"]:
+            return [today + timedelta(days=i) for i in range(30)]
+        return _month_dates(start)
 
     # --------------- Header ---------------
     with ui.header().classes("items-center justify-between px-6 py-2"):
@@ -497,7 +507,19 @@ def main_page():
                 rebuild()
             ui.button("Heute", icon="today", on_click=go_today).props("flat rounded dense no-caps").style("color: #0A2540;")
 
-        custom_row = ui.row().classes("w-full justify-center gap-3 items-center mt-2 pb-1")
+        with ui.row().classes("items-center gap-2 mt-1 pb-1 justify-center"):
+            def toggle_start_today(e):
+                state["start_today"] = e.value
+                rebuild()
+            ui.checkbox("Ab Heute starten", value=False, on_change=toggle_start_today).style("color: #0A2540; font-size: 13px;")
+
+        with ui.row().classes("items-center gap-2 mt-1 pb-1 justify-center"):
+            def toggle_start_today(e):
+                state["start_today"] = e.value
+                rebuild()
+            ui.checkbox("Ab Heute", value=False, on_change=toggle_start_today).style("color: #0A2540; font-size: 13px;")
+
+        custom_row = ui.row().classes("w-full justify-center gap-3 items-center mt-1 pb-1")
         _custom_row_holder[0] = custom_row
         custom_row.set_visibility(False)
         with custom_row:
@@ -1009,8 +1031,8 @@ def main_page():
     def rebuild():
         ui.run_javascript(
             "window.__hrpSX=window.scrollX; window.__hrpSY=window.scrollY;"
-            " const __d=document.querySelector('.overflow-x-auto');"
-            " window.__hrpSL=__d?__d.scrollLeft:0;"
+            " var __sc=document.getElementById('hrp-scroll-container');"
+            " window.__hrpSL=__sc?__sc.scrollLeft:0;"
         )
         matrix_container.clear()
         mobile_container.clear()
@@ -1023,11 +1045,12 @@ def main_page():
             _build_day_view()
         _build_stats()
         ui.run_javascript(
-            "setTimeout(()=>{"
-            " window.scrollTo(window.__hrpSX||0,window.__hrpSY||0);"
-            " const __d=document.querySelector('.overflow-x-auto');"
-            " if(__d) __d.scrollLeft=window.__hrpSL||0;"
-            "},80);"
+            "window.scrollTo(window.__hrpSX||0,window.__hrpSY||0);"
+            " (function tryRestore(n){"
+            "  var sc=document.getElementById('hrp-scroll-container');"
+            "  if(sc){ sc.scrollLeft=window.__hrpSL||0; }"
+            "  else if(n>0){ setTimeout(function(){tryRestore(n-1);},50); }"
+            " })(20);"
         )
 
     def _build_matrix():
@@ -1074,7 +1097,7 @@ def main_page():
                         ui.html(f'<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:{bc}"></span>')
                         ui.label(lbl).classes("text-xs").style("color: #64748b;")
 
-            with ui.element("div").classes("w-full overflow-x-auto rounded-xl").style(
+            with ui.element("div").props('id="hrp-scroll-container"').classes("w-full overflow-x-auto rounded-xl").style(
                 "background: #ffffff; box-shadow: 0 2px 8px rgba(10,37,64,0.06);"
             ):
                 with ui.element("table").classes("w-full border-collapse text-xs"):
@@ -1276,7 +1299,7 @@ def main_page():
         task_tag_map: dict[str, list[Tag]] = {t.id: list(t.tags) for t in tasks}
 
         today = date.today()
-        sorted_dates = sorted(dates, key=lambda d: (0 if d == today else 1, d))
+        sorted_dates = [d for d in sorted(dates) if d >= today]
 
         with mobile_container:
             if is_admin:
