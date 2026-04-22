@@ -1,0 +1,17 @@
+version: "3.8"
+
+services:
+  hrp:
+    build: .
+    container_name: household-resource-planner
+    ports:
+      - "8080:8080"
+    volumes:
+      - hrp_data:/app/data
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Berlin
+
+volumes:
+  hrp_data:
+    driver: local
