@@ -195,6 +195,22 @@ def _set_assignment_mode(db: Session, instance_id: str, user_id: str, mode: str 
     db.commit()
 
 
+def _remove_user_from_all_instances(db: Session, task_id: str, user_id: str, dates: list[date]):
+    instances = (
+        db.query(TaskInstance)
+        .options(joinedload(TaskInstance.assigned_users))
+        .filter(TaskInstance.task_id == task_id, TaskInstance.date.in_(dates))
+        .all()
+    )
+    u_obj = db.query(User).get(user_id)
+    if not u_obj:
+        return
+    for inst in instances:
+        if u_obj in inst.assigned_users:
+            inst.assigned_users.remove(u_obj)
+    db.commit()
+
+
 def _compute_user_minutes(
     db: Session, dates: list[date], users: list[User]
 ) -> dict[str, dict[date, float]]:
@@ -387,10 +403,14 @@ def main_page():
 
     is_admin = user.role == UserRole.ADMIN
 
+    _today = date.today()
+    _wstart = _today - timedelta(days=_today.weekday())
     state = {
         "view_mode": "week",
-        "ref_date": date.today(),
+        "ref_date": _today,
         "display": "matrix",
+        "custom_start": _wstart,
+        "custom_end": _wstart + timedelta(days=6),
     }
 
     def get_dates():
@@ -398,6 +418,15 @@ def main_page():
             return _week_dates(state["ref_date"])
         if state["view_mode"] == "2weeks":
             return _two_week_dates(state["ref_date"])
+        if state["view_mode"] == "custom":
+            s, e = state["custom_start"], state["custom_end"]
+            if e < s:
+                e = s
+            days, d = [], s
+            while d <= e and len(days) < 62:
+                days.append(d)
+                d += timedelta(days=1)
+            return days
         return _month_dates(state["ref_date"])
 
     # --------------- Header ---------------
@@ -415,18 +444,22 @@ def main_page():
         ui.navigate.to("/login")
 
     # --------------- Navigation ---------------
+    _custom_row_holder: list = [None]
+
     with ui.card().classes("w-full rounded-xl mx-4 mt-3 px-4 py-3").style(
         "background: #ffffff; box-shadow: 0 2px 8px rgba(10,37,64,0.08); border-bottom: 2px solid rgba(0,229,255,0.4);"
     ):
         with ui.row().classes("w-full items-center justify-center gap-4 flex-wrap"):
             def _prev():
-                delta = {"week": timedelta(weeks=1), "2weeks": timedelta(weeks=2)}.get(state["view_mode"], timedelta(days=30))
-                state["ref_date"] -= delta
+                if state["view_mode"] != "custom":
+                    delta = {"week": timedelta(weeks=1), "2weeks": timedelta(weeks=2)}.get(state["view_mode"], timedelta(days=30))
+                    state["ref_date"] -= delta
                 rebuild()
 
             def _next():
-                delta = {"week": timedelta(weeks=1), "2weeks": timedelta(weeks=2)}.get(state["view_mode"], timedelta(days=30))
-                state["ref_date"] += delta
+                if state["view_mode"] != "custom":
+                    delta = {"week": timedelta(weeks=1), "2weeks": timedelta(weeks=2)}.get(state["view_mode"], timedelta(days=30))
+                    state["ref_date"] += delta
                 rebuild()
 
             ui.button(icon="chevron_left", on_click=_prev).props("flat round dense").style("color: #0A2540;")
@@ -437,10 +470,12 @@ def main_page():
 
             def toggle_view(val):
                 state["view_mode"] = val
+                if _custom_row_holder[0]:
+                    _custom_row_holder[0].set_visibility(val == "custom")
                 rebuild()
 
             ui.toggle(
-                {"week": "1 Woche", "2weeks": "2 Wochen", "month": "Monat"},
+                {"week": "1 Woche", "2weeks": "2 Wochen", "month": "Monat", "custom": "Benutzerdefiniert"},
                 value="week",
                 on_change=lambda e: toggle_view(e.value),
             ).props("rounded dense no-caps").style("color: #0A2540;")
@@ -461,6 +496,23 @@ def main_page():
                 state["ref_date"] = date.today()
                 rebuild()
             ui.button("Heute", icon="today", on_click=go_today).props("flat rounded dense no-caps").style("color: #0A2540;")
+
+        custom_row = ui.row().classes("w-full justify-center gap-3 items-center mt-2 pb-1")
+        _custom_row_holder[0] = custom_row
+        custom_row.set_visibility(False)
+        with custom_row:
+            ui.label("Von:").classes("text-sm font-medium").style("color: #0A2540;")
+            cs_input = ui.input(value=state["custom_start"].isoformat()).props("outlined rounded dense type=date")
+            ui.label("Bis:").classes("text-sm font-medium").style("color: #0A2540;")
+            ce_input = ui.input(value=state["custom_end"].isoformat()).props("outlined rounded dense type=date")
+            def apply_custom():
+                try:
+                    state["custom_start"] = date.fromisoformat(cs_input.value)
+                    state["custom_end"] = date.fromisoformat(ce_input.value)
+                    rebuild()
+                except ValueError:
+                    ui.notify("Ungültiges Datum", type="negative")
+            ui.button("Anwenden", on_click=apply_custom).props("rounded unelevated no-caps size=sm").style("background: #00C2D1; color: white;")
 
     # --------------- Containers ---------------
     matrix_container = ui.column().classes("w-full px-4 mt-3")
@@ -542,7 +594,15 @@ def main_page():
                             value=mode or "none",
                             label="Modus",
                         ).props("dense outlined rounded").classes("flex-1")
-                        rows.append({"user_id": u.id, "cb": cb, "mode": mode_select})
+                        if is_assigned:
+                            remove_scope_select = ui.select(
+                                {"single": "Nur diese", "all": "Alle im Zeitraum"},
+                                value="single",
+                                label="Entfernen:",
+                            ).props("dense outlined rounded").style("min-width: 120px;")
+                        else:
+                            remove_scope_select = None
+                        rows.append({"user_id": u.id, "cb": cb, "mode": mode_select, "was_assigned": is_assigned, "remove_scope": remove_scope_select})
 
             def save_assign():
                 db2 = _get_db()
@@ -567,6 +627,11 @@ def main_page():
 
                 db2.commit()
                 _apply_assignment_rules(db2, instance, rows)
+                # Remove from all instances in date range if requested
+                dates_now = get_dates()
+                for r in rows:
+                    if r.get("was_assigned") and not r["cb"].value and r.get("remove_scope") and r["remove_scope"].value == "all":
+                        _remove_user_from_all_instances(db2, instance.task_id, r["user_id"], dates_now)
                 db2.close()
                 dlg.close()
                 ui.notify("Zuweisung gespeichert", type="positive")
@@ -629,6 +694,9 @@ def main_page():
                 tag_select = None
 
             day_cbs, daily_cb = _weekday_picker()
+            ui.separator().classes("my-1")
+            ui.label("Datum (für einmalige Aufgabe, wenn kein Wochentag ausgewählt):").classes("text-caption").style("color: #64748b;")
+            date_in = ui.input(value=date.today().isoformat()).props("outlined rounded dense type=date").classes("w-full")
 
             def save():
                 selected = _selected_days_from_checkboxes(day_cbs, daily_cb)
@@ -650,6 +718,14 @@ def main_page():
                         if tag:
                             t.tags.append(tag)
                 db2.add(t)
+                db2.flush()
+                if not selected and date_in.value:
+                    try:
+                        one_time_date = date.fromisoformat(date_in.value)
+                        inst_obj = TaskInstance(id=str(uuid.uuid4()), task_id=t.id, date=one_time_date, status=TaskStatus.OPEN)
+                        db2.add(inst_obj)
+                    except ValueError:
+                        pass
                 db2.commit()
                 db2.close()
                 dlg.close()
@@ -840,8 +916,47 @@ def main_page():
                                 with ui.row().classes("items-center gap-2"):
                                     ui.label(f"{u.daily_capacity_minutes} Min/Tag").classes("text-xs").style("color: #64748b;")
                                     if u.username != "admin":
+                                        ui.button(icon="edit", on_click=lambda uid=u.id: _edit_user(uid)).props("flat round dense size=sm").style("color: #00C2D1;")
                                         ui.button(icon="delete", on_click=lambda uid=u.id: _delete_user(uid)).props("flat round dense size=sm color=red")
                 db.close()
+
+            def _edit_user(uid):
+                db = _get_db()
+                u = db.query(User).get(uid)
+                if not u:
+                    db.close()
+                    return
+                u_role = u.role.value
+                u_cap = u.daily_capacity_minutes
+                u_sa = u.can_self_assign
+                db.close()
+                with ui.dialog() as edit_dlg, ui.card().classes("w-[400px] rounded-xl").style("background: #ffffff;"):
+                    ui.label(f"Benutzer: {u.username}").classes("text-h6 font-bold").style("color: #0A2540; font-family: Outfit, sans-serif;")
+                    edit_role = ui.select({"ADMIN": "Admin", "USER": "User"}, value=u_role, label="Rolle").props("outlined rounded dense").classes("w-full")
+                    edit_cap = ui.number("Kapazität (Min/Tag)", value=u_cap, min=0, max=1440).props("outlined rounded dense").classes("w-full")
+                    edit_sa = ui.checkbox("Darf sich selbst Aufgaben zuweisen", value=u_sa)
+                    edit_pw = ui.input("Neues Passwort (leer = unverändert)", password=True).props("outlined rounded dense").classes("w-full")
+
+                    def save_edit(uid=uid):
+                        db2 = _get_db()
+                        u2 = db2.query(User).get(uid)
+                        if u2:
+                            u2.role = UserRole(edit_role.value)
+                            u2.daily_capacity_minutes = int(edit_cap.value)
+                            u2.can_self_assign = edit_sa.value
+                            if edit_pw.value.strip():
+                                u2.password_hash = hash_password(edit_pw.value.strip())
+                            db2.commit()
+                        db2.close()
+                        edit_dlg.close()
+                        ui.notify("Benutzer aktualisiert!", type="positive")
+                        refresh_users_list()
+                        rebuild()
+
+                    with ui.row().classes("w-full justify-end gap-2 mt-3"):
+                        ui.button("Abbrechen", on_click=edit_dlg.close).props("flat rounded no-caps")
+                        ui.button("Speichern", on_click=save_edit).props("rounded unelevated no-caps").style("background: #00C2D1; color: white;")
+                edit_dlg.open()
 
             def _delete_user(uid):
                 db = _get_db()
@@ -892,6 +1007,11 @@ def main_page():
     # --------------- Build / Rebuild ---------------
 
     def rebuild():
+        ui.run_javascript(
+            "window.__hrpSX=window.scrollX; window.__hrpSY=window.scrollY;"
+            " const __d=document.querySelector('.overflow-x-auto');"
+            " window.__hrpSL=__d?__d.scrollLeft:0;"
+        )
         matrix_container.clear()
         mobile_container.clear()
         day_container.clear()
@@ -902,6 +1022,13 @@ def main_page():
         elif state["display"] == "day":
             _build_day_view()
         _build_stats()
+        ui.run_javascript(
+            "setTimeout(()=>{"
+            " window.scrollTo(window.__hrpSX||0,window.__hrpSY||0);"
+            " const __d=document.querySelector('.overflow-x-auto');"
+            " if(__d) __d.scrollLeft=window.__hrpSL||0;"
+            "},80);"
+        )
 
     def _build_matrix():
         matrix_container.clear()
@@ -1061,69 +1188,71 @@ def main_page():
             else:
                 ui.html(f'<span style="color:{icon_c}; font-size:10px;">⚠ offen</span>')
 
-            with ui.row().classes("gap-0 justify-center mt-1"):
-                if is_admin:
-                    def open_assign(iid=inst.id, dt=d, t=task, aids=assigned_ids):
-                        _open_assign_dialog(iid, dt, t, users_all, aids)
-                    ui.button(icon="group_add", on_click=open_assign).props("flat round dense size=xs").style("color: #00C2D1;")
-                elif user.can_self_assign:
-                    if user.id in assigned_ids:
-                        def remove_self(iid=inst.id, uid=user.id):
+            with ui.column().classes("items-center gap-0 mt-1"):
+                with ui.row().classes("gap-0 justify-center"):
+                    if is_admin:
+                        def open_assign(iid=inst.id, dt=d, t=task, aids=assigned_ids):
+                            _open_assign_dialog(iid, dt, t, users_all, aids)
+                        ui.button(icon="group_add", on_click=open_assign).props("flat round dense size=sm").style("color: #00C2D1;")
+                    elif user.can_self_assign:
+                        if user.id in assigned_ids:
+                            def remove_self(iid=inst.id, uid=user.id):
+                                db2 = _get_db()
+                                inst2 = db2.query(TaskInstance).options(joinedload(TaskInstance.assigned_users)).get(iid)
+                                if inst2:
+                                    u_obj = db2.query(User).get(uid)
+                                    if u_obj and u_obj in inst2.assigned_users:
+                                        inst2.assigned_users.remove(u_obj)
+                                        db2.commit()
+                                db2.close()
+                                rebuild()
+                            ui.button(icon="person_remove", on_click=remove_self).props("flat round dense size=sm color=orange")
+                        else:
+                            def add_self(iid=inst.id, uid=user.id):
+                                db2 = _get_db()
+                                inst2 = db2.query(TaskInstance).options(joinedload(TaskInstance.assigned_users)).get(iid)
+                                if inst2:
+                                    u_obj = db2.query(User).get(uid)
+                                    if u_obj and u_obj not in inst2.assigned_users:
+                                        inst2.assigned_users.append(u_obj)
+                                        db2.commit()
+                                db2.close()
+                                rebuild()
+                            ui.button(icon="person_add", on_click=add_self).props("flat round dense size=sm").style("color: #00C2D1;")
+
+                    if is_admin or user.id in assigned_ids:
+                        def toggle_status(iid=inst.id):
                             db2 = _get_db()
-                            inst2 = db2.query(TaskInstance).options(joinedload(TaskInstance.assigned_users)).get(iid)
-                            if inst2:
-                                u_obj = db2.query(User).get(uid)
-                                if u_obj and u_obj in inst2.assigned_users:
-                                    inst2.assigned_users.remove(u_obj)
-                                    db2.commit()
+                            instance = db2.query(TaskInstance).get(iid)
+                            if instance:
+                                instance.status = TaskStatus.COMPLETED if instance.status == TaskStatus.OPEN else TaskStatus.OPEN
+                                db2.commit()
+                            db2.close()
+                            ui.notify("Status aktualisiert", type="positive")
+                            rebuild()
+                        icon_name = "check_circle" if completed else "radio_button_unchecked"
+                        ui.button(icon=icon_name, on_click=toggle_status).props(f"flat round dense size=sm color={'green' if completed else 'grey'}")
+
+                with ui.row().classes("gap-0 justify-center"):
+                    # Notes button
+                    def open_notes(iid=inst.id, dt=d, tt=task.title):
+                        _open_notes_dialog(iid, dt, tt)
+                    note_color = "#00C2D1" if inst.notes else "#94a3b8"
+                    ui.button(icon="sticky_note_2", on_click=open_notes).props("flat round dense size=sm").style(f"color: {note_color};")
+
+                    if is_admin:
+                        def deactivate(iid=inst.id, dt=d, t_id=task.id):
+                            db2 = _get_db()
+                            instance = db2.query(TaskInstance).get(iid)
+                            if instance:
+                                task_obj = db2.query(Task).get(t_id)
+                                if task_obj and task_obj.is_recurring:
+                                    _add_excluded_date(db2, task_obj, dt)
+                                db2.delete(instance)
+                                db2.commit()
                             db2.close()
                             rebuild()
-                        ui.button(icon="person_remove", on_click=remove_self).props("flat round dense size=xs color=orange")
-                    else:
-                        def add_self(iid=inst.id, uid=user.id):
-                            db2 = _get_db()
-                            inst2 = db2.query(TaskInstance).options(joinedload(TaskInstance.assigned_users)).get(iid)
-                            if inst2:
-                                u_obj = db2.query(User).get(uid)
-                                if u_obj and u_obj not in inst2.assigned_users:
-                                    inst2.assigned_users.append(u_obj)
-                                    db2.commit()
-                            db2.close()
-                            rebuild()
-                        ui.button(icon="person_add", on_click=add_self).props("flat round dense size=xs").style("color: #00C2D1;")
-
-                if is_admin or user.id in assigned_ids:
-                    def toggle_status(iid=inst.id):
-                        db2 = _get_db()
-                        instance = db2.query(TaskInstance).get(iid)
-                        if instance:
-                            instance.status = TaskStatus.COMPLETED if instance.status == TaskStatus.OPEN else TaskStatus.OPEN
-                            db2.commit()
-                        db2.close()
-                        ui.notify("Status aktualisiert", type="positive")
-                        rebuild()
-                    icon_name = "check_circle" if completed else "radio_button_unchecked"
-                    ui.button(icon=icon_name, on_click=toggle_status).props(f"flat round dense size=xs color={'green' if completed else 'grey'}")
-
-                # Notes button
-                def open_notes(iid=inst.id, dt=d, tt=task.title):
-                    _open_notes_dialog(iid, dt, tt)
-                note_color = "#00C2D1" if inst.notes else "#94a3b8"
-                ui.button(icon="sticky_note_2", on_click=open_notes).props("flat round dense size=xs").style(f"color: {note_color};")
-
-                if is_admin:
-                    def deactivate(iid=inst.id, dt=d, t_id=task.id):
-                        db2 = _get_db()
-                        instance = db2.query(TaskInstance).get(iid)
-                        if instance:
-                            task_obj = db2.query(Task).get(t_id)
-                            if task_obj and task_obj.is_recurring:
-                                _add_excluded_date(db2, task_obj, dt)
-                            db2.delete(instance)
-                            db2.commit()
-                        db2.close()
-                        rebuild()
-                    ui.button(icon="close", on_click=deactivate).props("flat round dense size=xs color=red")
+                        ui.button(icon="close", on_click=deactivate).props("flat round dense size=sm color=red")
 
     def _build_list():
         mobile_container.clear()
@@ -1187,6 +1316,8 @@ def main_page():
                 for task in tasks:
                     inst = inst_map.get((task.id, d))
                     status = _cell_status(inst, d)
+                    if status == "inactive":
+                        continue
                     border_c, bg_c, icon_c = CELL_STYLES[status]
                     tags = task_tag_map.get(task.id, [])
 
