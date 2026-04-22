@@ -131,19 +131,21 @@ class TaskInstance(Base):
 
 def _migrate_db():
     """Apply incremental schema migrations for existing databases."""
+    import sqlite3 as _sqlite3
+    db_path = DATABASE_URL.replace("sqlite:///", "")
     migrations = [
         "ALTER TABLE users ADD COLUMN can_self_assign BOOLEAN NOT NULL DEFAULT 0",
         "ALTER TABLE tasks ADD COLUMN description VARCHAR",
         "ALTER TABLE tasks ADD COLUMN excluded_dates VARCHAR",
         "ALTER TABLE task_instances ADD COLUMN notes VARCHAR",
     ]
-    for sql in migrations:
-        try:
-            with engine.connect() as conn:
-                conn.execute(text(sql))
+    with _sqlite3.connect(db_path) as conn:
+        for sql in migrations:
+            try:
+                conn.execute(sql)
                 conn.commit()
-        except Exception:
-            pass  # column already exists
+            except _sqlite3.OperationalError:
+                pass  # column already exists
 
 
 def init_db():
