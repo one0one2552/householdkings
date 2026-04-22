@@ -581,6 +581,8 @@ def main_page():
     # --------------- Assign dialog with "immer" / "jeden X" ---------------
     def _open_assign_dialog(instance_id: str, instance_date: date, task: Task, all_users: list[User], current_ids: list[str]):
         db = _get_db()
+        # Always re-fetch users from a fresh session to avoid DetachedInstanceError
+        fresh_users = db.query(User).order_by(User.username).all()
         weekday_label = WEEKDAY_LABELS[instance_date.weekday()]
 
         with ui.dialog() as dlg, ui.card().classes("w-[500px] rounded-xl").style("background: #ffffff;"):
@@ -588,7 +590,7 @@ def main_page():
             ui.label(f"{task.title} – {instance_date.strftime('%A, %d.%m.%Y')}").classes("text-caption mb-2").style("color: #64748b;")
 
             rows: list[dict] = []
-            for idx, u in enumerate(all_users):
+            for idx, u in enumerate(fresh_users):
                 color = _user_color(idx)
                 is_assigned = u.id in current_ids
                 mode = _get_assignment_mode(db, instance_id, u.id) if is_assigned else None
