@@ -258,6 +258,29 @@ CELL_STYLES = {
     "inactive":   ("#94a3b8", "rgba(148,163,184,0.10)", "#94a3b8"),
 }
 
+THEME_OPTIONS = {
+    "owl_light": "OWL Light",
+    "owl_dark": "OWL Dark",
+    "industrial_light": "Industrial Light",
+    "carbon_dark": "Carbon Dark",
+}
+
+DARK_THEMES = {"owl_dark", "carbon_dark"}
+
+
+def _normalize_theme(theme: str | None) -> str:
+    if theme == "light":
+        return "owl_light"
+    if theme == "dark":
+        return "owl_dark"
+    if theme in THEME_OPTIONS:
+        return theme
+    return "owl_light"
+
+
+def _is_dark_theme(theme: str) -> bool:
+    return theme in DARK_THEMES
+
 # ---------------------------------------------------------------------------
 # CSS
 # ---------------------------------------------------------------------------
@@ -283,7 +306,8 @@ CUSTOM_CSS = """
     --owl-header-text: #1A1A1B;
     --owl-text-on-accent: #ffffff;
 }
-body.body--dark {
+
+body[data-theme="owl_dark"] {
     --owl-bg: #1A1A1B;
     --owl-surface: #232326;
     --owl-surface-soft: #2a2a2d;
@@ -299,6 +323,42 @@ body.body--dark {
     --owl-header-bg: rgba(26, 26, 27, 0.94);
     --owl-header-text: #F0F0F0;
     --owl-text-on-accent: #1A1A1B;
+}
+
+body[data-theme="industrial_light"] {
+    --owl-bg: #f2f2f1;
+    --owl-surface: #ffffff;
+    --owl-surface-soft: #f0f0ee;
+    --owl-text: #19191a;
+    --owl-text-soft: #2f2f33;
+    --owl-muted: #5b5b60;
+    --owl-structure: #8e8e93;
+    --owl-accent: #cf8500;
+    --owl-accent-soft: rgba(207,133,0,0.2);
+    --owl-accent-strong: #b67400;
+    --owl-shadow: 0 14px 34px rgba(0, 0, 0, 0.11);
+    --owl-border: rgba(120, 120, 126, 0.3);
+    --owl-header-bg: rgba(246, 246, 245, 0.95);
+    --owl-header-text: #19191a;
+    --owl-text-on-accent: #ffffff;
+}
+
+body[data-theme="carbon_dark"] {
+    --owl-bg: #101114;
+    --owl-surface: #181a1f;
+    --owl-surface-soft: #20242b;
+    --owl-text: #f3f4f6;
+    --owl-text-soft: #e6e8ec;
+    --owl-muted: #b8bec8;
+    --owl-structure: #8f98a8;
+    --owl-accent: #ffb000;
+    --owl-accent-soft: rgba(255,176,0,0.24);
+    --owl-accent-strong: #ffc23d;
+    --owl-shadow: 0 20px 54px rgba(0, 0, 0, 0.48);
+    --owl-border: rgba(112, 121, 138, 0.44);
+    --owl-header-bg: rgba(16, 17, 20, 0.94);
+    --owl-header-text: #f3f4f6;
+    --owl-text-on-accent: #161616;
 }
 
 body, .q-page {
@@ -331,6 +391,37 @@ body, .q-page {
 
 .q-field__label, .q-field__native {
     color: var(--owl-text) !important;
+}
+
+.q-field__input,
+.q-field__prefix,
+.q-field__suffix,
+.q-item__label,
+.q-checkbox__label,
+.q-toggle__label,
+.q-radio__label,
+.q-tab,
+.q-chip,
+.q-expansion-item__label,
+.q-menu,
+.q-select__dropdown-icon,
+.q-select__dropdown-icon:before {
+    color: var(--owl-text) !important;
+}
+
+body[data-theme="owl_dark"] .q-item__label,
+body[data-theme="owl_dark"] .q-checkbox__label,
+body[data-theme="owl_dark"] .q-toggle__label,
+body[data-theme="owl_dark"] .q-field__label,
+body[data-theme="owl_dark"] .q-field__native,
+body[data-theme="owl_dark"] .q-field__input,
+body[data-theme="carbon_dark"] .q-item__label,
+body[data-theme="carbon_dark"] .q-checkbox__label,
+body[data-theme="carbon_dark"] .q-toggle__label,
+body[data-theme="carbon_dark"] .q-field__label,
+body[data-theme="carbon_dark"] .q-field__native,
+body[data-theme="carbon_dark"] .q-field__input {
+    color: var(--owl-text-soft) !important;
 }
 
 .q-field--outlined .q-field__control {
@@ -436,6 +527,14 @@ body, .q-page {
     color: var(--owl-accent) !important;
 }
 
+.hrp-theme-select {
+    min-width: 170px;
+}
+
+.hrp-theme-select .q-field__control {
+    background: var(--owl-surface) !important;
+}
+
 /* Map legacy inline colors to the new theme palette */
 [style*="#0A2540"] { color: var(--owl-text) !important; }
 [style*="#64748b"] { color: var(--owl-muted) !important; }
@@ -445,7 +544,6 @@ body, .q-page {
 [style*="background: #ffffff"] { background: var(--owl-surface) !important; }
 [style*="background: #f8fafc"] { background: var(--owl-surface-soft) !important; }
 [style*="color: #e2e8f0"] { color: var(--owl-text-soft) !important; }
-[style*="color: white"] { color: var(--owl-text-on-accent) !important; }
 </style>
 """
 
@@ -470,10 +568,11 @@ SORTABLE_JS = '<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sorta
 
 @ui.page("/login")
 def login_page():
-    theme_is_dark = nicegui_app.storage.user.get("theme", "light") == "dark"
-    dark_mode = ui.dark_mode(theme_is_dark)
+    theme_key = _normalize_theme(nicegui_app.storage.user.get("theme", "owl_light"))
+    dark_mode = ui.dark_mode(_is_dark_theme(theme_key))
     ui.add_head_html(CUSTOM_CSS)
     ui.add_head_html(LOGIN_CSS)
+    ui.run_javascript(f"document.body.setAttribute('data-theme', '{theme_key}')")
 
     with ui.card().classes("absolute-center w-[420px] rounded-2xl px-4 py-3").style(
         "box-shadow: var(--owl-shadow); border: 1px solid var(--owl-border);"
@@ -484,7 +583,7 @@ def login_page():
                 with ui.column().classes("gap-0"):
                     ui.label("O.W.L.").classes("hrp-wordmark")
                     ui.label("Open Work Lab").classes("hrp-submark")
-            theme_switch = ui.switch("Dark", value=theme_is_dark, on_change=lambda e: set_theme(e.value)).classes("hrp-theme-switch text-xs")
+            theme_select = ui.select(THEME_OPTIONS, value=theme_key, label="Theme", on_change=lambda e: set_theme(e.value)).props("outlined dense options-dense").classes("hrp-theme-select")
 
         with ui.column().classes("w-full items-center gap-2 py-2"):
             ui.label("Haushalts-Planer").classes("text-h5 font-bold")
@@ -494,12 +593,14 @@ def login_page():
         password_input = ui.input("Passwort", password=True, password_toggle_button=True).props("outlined rounded").classes("w-full")
         error_label = ui.label("").classes("text-red text-center w-full")
 
-        def set_theme(enabled: bool):
-            nicegui_app.storage.user["theme"] = "dark" if enabled else "light"
-            if enabled:
+        def set_theme(theme: str):
+            theme_value = _normalize_theme(theme)
+            nicegui_app.storage.user["theme"] = theme_value
+            if _is_dark_theme(theme_value):
                 dark_mode.enable()
             else:
                 dark_mode.disable()
+            ui.run_javascript(f"document.body.setAttribute('data-theme', '{theme_value}')")
 
         def do_login():
             db = _get_db()
@@ -521,10 +622,11 @@ def login_page():
 
 @ui.page("/")
 def main_page():
-    theme_is_dark = nicegui_app.storage.user.get("theme", "light") == "dark"
-    dark_mode = ui.dark_mode(theme_is_dark)
+    theme_key = _normalize_theme(nicegui_app.storage.user.get("theme", "owl_light"))
+    dark_mode = ui.dark_mode(_is_dark_theme(theme_key))
     ui.add_head_html(CUSTOM_CSS)
     ui.add_head_html(SORTABLE_JS)
+    ui.run_javascript(f"document.body.setAttribute('data-theme', '{theme_key}')")
     user = _current_user(nicegui_app.storage.user)
     if not user:
         ui.navigate.to("/login")
@@ -579,14 +681,16 @@ def main_page():
             ui.icon("person", size="20px").style("color: var(--owl-accent);")
             ui.label(user.username).classes("text-sm font-medium").style("color: var(--owl-text);")
 
-            def set_theme(enabled: bool):
-                nicegui_app.storage.user["theme"] = "dark" if enabled else "light"
-                if enabled:
+            def set_theme(theme: str):
+                theme_value = _normalize_theme(theme)
+                nicegui_app.storage.user["theme"] = theme_value
+                if _is_dark_theme(theme_value):
                     dark_mode.enable()
                 else:
                     dark_mode.disable()
+                ui.run_javascript(f"document.body.setAttribute('data-theme', '{theme_value}')")
 
-            ui.switch("Dark", value=theme_is_dark, on_change=lambda e: set_theme(e.value)).classes("hrp-theme-switch text-xs")
+            ui.select(THEME_OPTIONS, value=theme_key, label="Theme", on_change=lambda e: set_theme(e.value)).props("outlined dense options-dense").classes("hrp-theme-select")
             ui.button("Logout", on_click=lambda: _logout(), icon="logout").props("flat rounded size=sm")
 
     def _logout():
