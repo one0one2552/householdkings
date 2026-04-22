@@ -1022,11 +1022,6 @@ def main_page():
     # --------------- Build / Rebuild ---------------
 
     def rebuild():
-        ui.run_javascript(
-            "window.__hrpSX=window.scrollX; window.__hrpSY=window.scrollY;"
-            " var __sc=document.getElementById('hrp-scroll-container');"
-            " window.__hrpSL=__sc?__sc.scrollLeft:0;"
-        )
         matrix_container.clear()
         mobile_container.clear()
         day_container.clear()
@@ -1037,19 +1032,6 @@ def main_page():
         elif state["display"] == "day":
             _build_day_view()
         _build_stats()
-        ui.run_javascript(
-            "window.scrollTo(window.__hrpSX||0,window.__hrpSY||0);"
-            " (function(){"
-            "  var sc=document.getElementById('hrp-scroll-container');"
-            "  if(sc){ sc.scrollLeft=window.__hrpSL||0; return; }"
-            "  var obs=new MutationObserver(function(ml,o){"
-            "   var sc=document.getElementById('hrp-scroll-container');"
-            "   if(sc){ sc.scrollLeft=window.__hrpSL||0; o.disconnect(); }"
-            "  });"
-            "  obs.observe(document.body,{childList:true,subtree:true});"
-            "  setTimeout(function(){obs.disconnect();},3000);"
-            " })();"
-        )
 
     def _build_matrix():
         matrix_container.clear()
@@ -1725,7 +1707,25 @@ def main_page():
                                                     ui.label("–").style("color: #94a3b8;")
         db.close()
 
-    # Initial build
+    # Initial build – install persistent scroll-save/restore handler once
+    ui.run_javascript(
+        "(function(){"
+        "  function bind(sc){"
+        "    if(sc.__hrpB)return; sc.__hrpB=1;"
+        "    var sv=parseInt(sessionStorage.getItem('hrp_sl')||'0',10);"
+        "    if(sv>0){setTimeout(function(){sc.scrollLeft=sv;},150);}"
+        "    sc.addEventListener('scroll',function(){"
+        "      sessionStorage.setItem('hrp_sl',sc.scrollLeft);"
+        "    },{passive:true});"
+        "  }"
+        "  var sc=document.getElementById('hrp-scroll-container');"
+        "  if(sc)bind(sc);"
+        "  new MutationObserver(function(){"
+        "    var sc=document.getElementById('hrp-scroll-container');"
+        "    if(sc)bind(sc);"
+        "  }).observe(document.body,{childList:true,subtree:true});"
+        "})()"
+    )
     rebuild()
 
 
