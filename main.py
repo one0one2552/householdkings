@@ -480,10 +480,7 @@ def login_page():
     ):
         with ui.row().classes("w-full items-center justify-between mb-2"):
             with ui.row().classes("items-center gap-2"):
-                logo_light = ui.image("ci/owl_dark.jpg").classes("w-11 h-11 rounded-full object-cover")
-                logo_dark = ui.image("ci/owl_light.jpg").classes("w-11 h-11 rounded-full object-cover")
-                logo_light.set_visibility(not theme_is_dark)
-                logo_dark.set_visibility(theme_is_dark)
+                ui.image("ci/logo (1).jpg").classes("w-11 h-11 rounded-full object-cover")
                 with ui.column().classes("gap-0"):
                     ui.label("O.W.L.").classes("hrp-wordmark")
                     ui.label("Open Work Lab").classes("hrp-submark")
@@ -503,8 +500,6 @@ def login_page():
                 dark_mode.enable()
             else:
                 dark_mode.disable()
-            logo_light.set_visibility(not enabled)
-            logo_dark.set_visibility(enabled)
 
         def do_login():
             db = _get_db()
@@ -576,10 +571,7 @@ def main_page():
     # --------------- Header ---------------
     with ui.header().classes("items-center justify-between px-6 py-2"):
         with ui.row().classes("items-center gap-3"):
-            logo_light = ui.image("ci/owl_dark.jpg").classes("w-9 h-9 rounded-full object-cover")
-            logo_dark = ui.image("ci/owl_light.jpg").classes("w-9 h-9 rounded-full object-cover")
-            logo_light.set_visibility(not theme_is_dark)
-            logo_dark.set_visibility(theme_is_dark)
+            ui.image("ci/logo (1).jpg").classes("w-9 h-9 rounded-full object-cover")
             with ui.column().classes("gap-0"):
                 ui.label("O.W.L.").classes("hrp-wordmark")
                 ui.label("Open Work Lab").classes("hrp-submark")
@@ -593,8 +585,6 @@ def main_page():
                     dark_mode.enable()
                 else:
                     dark_mode.disable()
-                logo_light.set_visibility(not enabled)
-                logo_dark.set_visibility(enabled)
 
             ui.switch("Dark", value=theme_is_dark, on_change=lambda e: set_theme(e.value)).classes("hrp-theme-switch text-xs")
             ui.button("Logout", on_click=lambda: _logout(), icon="logout").props("flat rounded size=sm")
