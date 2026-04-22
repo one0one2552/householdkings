@@ -490,6 +490,11 @@ def main_page():
                 on_change=lambda e: toggle_view(e.value),
             ).props("rounded dense no-caps").style("color: #0A2540;")
 
+            def toggle_start_today(e):
+                state["start_today"] = e.value
+                rebuild()
+            ui.checkbox("Ab Heute", value=False, on_change=toggle_start_today).style("color: #0A2540; font-size: 13px;")
+
             ui.separator().props("vertical").classes("h-6")
 
             def toggle_display(val):
@@ -506,18 +511,6 @@ def main_page():
                 state["ref_date"] = date.today()
                 rebuild()
             ui.button("Heute", icon="today", on_click=go_today).props("flat rounded dense no-caps").style("color: #0A2540;")
-
-        with ui.row().classes("items-center gap-2 mt-1 pb-1 justify-center"):
-            def toggle_start_today(e):
-                state["start_today"] = e.value
-                rebuild()
-            ui.checkbox("Ab Heute starten", value=False, on_change=toggle_start_today).style("color: #0A2540; font-size: 13px;")
-
-        with ui.row().classes("items-center gap-2 mt-1 pb-1 justify-center"):
-            def toggle_start_today(e):
-                state["start_today"] = e.value
-                rebuild()
-            ui.checkbox("Ab Heute", value=False, on_change=toggle_start_today).style("color: #0A2540; font-size: 13px;")
 
         custom_row = ui.row().classes("w-full justify-center gap-3 items-center mt-1 pb-1")
         _custom_row_holder[0] = custom_row
@@ -1046,11 +1039,16 @@ def main_page():
         _build_stats()
         ui.run_javascript(
             "window.scrollTo(window.__hrpSX||0,window.__hrpSY||0);"
-            " (function tryRestore(n){"
+            " (function(){"
             "  var sc=document.getElementById('hrp-scroll-container');"
-            "  if(sc){ sc.scrollLeft=window.__hrpSL||0; }"
-            "  else if(n>0){ setTimeout(function(){tryRestore(n-1);},50); }"
-            " })(20);"
+            "  if(sc){ sc.scrollLeft=window.__hrpSL||0; return; }"
+            "  var obs=new MutationObserver(function(ml,o){"
+            "   var sc=document.getElementById('hrp-scroll-container');"
+            "   if(sc){ sc.scrollLeft=window.__hrpSL||0; o.disconnect(); }"
+            "  });"
+            "  obs.observe(document.body,{childList:true,subtree:true});"
+            "  setTimeout(function(){obs.disconnect();},3000);"
+            " })();"
         )
 
     def _build_matrix():
