@@ -137,13 +137,13 @@ def _migrate_db():
         "ALTER TABLE tasks ADD COLUMN excluded_dates VARCHAR",
         "ALTER TABLE task_instances ADD COLUMN notes VARCHAR",
     ]
-    with engine.connect() as conn:
-        for sql in migrations:
-            try:
+    for sql in migrations:
+        try:
+            with engine.connect() as conn:
                 conn.execute(text(sql))
                 conn.commit()
-            except Exception:
-                pass  # column already exists
+        except Exception:
+            pass  # column already exists
 
 
 def init_db():
