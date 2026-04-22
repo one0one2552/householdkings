@@ -1663,10 +1663,6 @@ def main_page():
                                 ui.label("Auslastung").classes("text-[10px] uppercase").style("color: #64748b;")
                                 util_color = "#ef4444" if utilization > 100 else ("#f59e0b" if utilization > 80 else "#10b981")
                                 ui.label(f"{utilization:.0f}%").classes("text-lg font-bold").style(f"color: {util_color};")
-                            if days_over > 0:
-                                with ui.column().classes("gap-0"):
-                                    ui.label("Überbucht").classes("text-[10px] uppercase").style("color: #ef4444;")
-                                    ui.label(f"{days_over} Tage").classes("text-lg font-bold").style("color: #ef4444;")
 
             with ui.card().classes("w-full hrp-stat-card px-4 py-3").style("border-left: 3px solid #00C2D1;"):
                 with ui.row().classes("items-center gap-2"):
