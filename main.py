@@ -259,23 +259,31 @@ CELL_STYLES = {
 }
 
 THEME_OPTIONS = {
-    "owl_light": "OWL Light",
-    "owl_dark": "OWL Dark",
-    "industrial_light": "Industrial Light",
-    "carbon_dark": "Carbon Dark",
+    "sunforge": "Sunforge",
+    "forest_circuit": "Forest Circuit",
+    "twilight_relic": "Twilight Relic",
+    "midnight_arcade": "Midnight Arcade",
 }
 
-DARK_THEMES = {"owl_dark", "carbon_dark"}
+DARK_THEMES = {"twilight_relic", "midnight_arcade"}
 
 
 def _normalize_theme(theme: str | None) -> str:
     if theme == "light":
-        return "owl_light"
+        return "sunforge"
     if theme == "dark":
-        return "owl_dark"
+        return "twilight_relic"
+    if theme == "owl_light":
+        return "sunforge"
+    if theme == "industrial_light":
+        return "forest_circuit"
+    if theme == "owl_dark":
+        return "twilight_relic"
+    if theme == "carbon_dark":
+        return "midnight_arcade"
     if theme in THEME_OPTIONS:
         return theme
-    return "owl_light"
+    return "sunforge"
 
 
 def _is_dark_theme(theme: str) -> bool:
@@ -287,114 +295,136 @@ def _is_dark_theme(theme: str) -> bool:
 
 CUSTOM_CSS = """
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-    --owl-bg: #ffffff;
-    --owl-surface: #ffffff;
-    --owl-surface-soft: #f7f7f7;
-    --owl-strong-surface: #1A1A1B;
-    --owl-text: #1A1A1B;
-    --owl-text-soft: #343438;
-    --owl-muted: #64646a;
-    --owl-structure: #a0a0a0;
-    --owl-accent: #E69500;
-    --owl-accent-soft: rgba(230,149,0,0.18);
-    --owl-accent-strong: #cc8600;
-    --owl-shadow: 0 14px 40px rgba(26, 26, 27, 0.09);
-    --owl-border: rgba(160, 160, 160, 0.35);
-    --owl-header-bg: rgba(255, 255, 255, 0.94);
-    --owl-header-text: #1A1A1B;
+    --owl-bg: #fff8dd;
+    --owl-bg-alt: #ffe6a7;
+    --owl-surface: #fffdf3;
+    --owl-surface-soft: #fff0bf;
+    --owl-strong-surface: #18486d;
+    --owl-text: #16324f;
+    --owl-text-soft: #2d4f73;
+    --owl-muted: #537091;
+    --owl-structure: #7aa4c0;
+    --owl-accent: #ff9f1c;
+    --owl-accent-2: #26c6da;
+    --owl-accent-soft: rgba(255,159,28,0.28);
+    --owl-accent-strong: #ff7d00;
+    --owl-shadow: 0 18px 42px rgba(255, 159, 28, 0.18);
+    --owl-border: rgba(24, 72, 109, 0.18);
+    --owl-header-bg: rgba(255, 251, 232, 0.84);
+    --owl-header-text: #16324f;
     --owl-text-on-accent: #ffffff;
 }
 
-body[data-theme="owl_dark"] {
-    --owl-bg: #1f2126;
-    --owl-surface: #3a4556;
-    --owl-surface-soft: #455267;
-    --owl-strong-surface: #515f79;
-    --owl-text: #ffffff;
-    --owl-text-soft: #f8fbff;
-    --owl-muted: #e9eef7;
-    --owl-structure: #d8e1ee;
-    --owl-accent: #FFB000;
-    --owl-accent-soft: rgba(255,176,0,0.24);
-    --owl-accent-strong: #ffbf33;
-    --owl-shadow: 0 18px 50px rgba(0, 0, 0, 0.52);
-    --owl-border: rgba(191, 202, 218, 0.62);
-    --owl-header-bg: rgba(28, 31, 37, 0.95);
-    --owl-header-text: #f7f8fa;
-    --owl-text-on-accent: #1A1A1B;
-}
-
-body[data-theme="industrial_light"] {
-    --owl-bg: #f2f2f1;
-    --owl-surface: #ffffff;
-    --owl-surface-soft: #f0f0ee;
-    --owl-strong-surface: #202126;
-    --owl-text: #19191a;
-    --owl-text-soft: #2f2f33;
-    --owl-muted: #5b5b60;
-    --owl-structure: #8e8e93;
-    --owl-accent: #cf8500;
-    --owl-accent-soft: rgba(207,133,0,0.2);
-    --owl-accent-strong: #b67400;
-    --owl-shadow: 0 14px 34px rgba(0, 0, 0, 0.11);
-    --owl-border: rgba(120, 120, 126, 0.3);
-    --owl-header-bg: rgba(246, 246, 245, 0.95);
-    --owl-header-text: #19191a;
+body[data-theme="forest_circuit"] {
+    --owl-bg: #efffe8;
+    --owl-bg-alt: #ccffd8;
+    --owl-surface: #fbfff9;
+    --owl-surface-soft: #ddffe8;
+    --owl-strong-surface: #1d5b48;
+    --owl-text: #173b34;
+    --owl-text-soft: #225146;
+    --owl-muted: #44766a;
+    --owl-structure: #6ac3a5;
+    --owl-accent: #1dd1a1;
+    --owl-accent-2: #7c4dff;
+    --owl-accent-soft: rgba(29,209,161,0.24);
+    --owl-accent-strong: #00b986;
+    --owl-shadow: 0 18px 44px rgba(29, 209, 161, 0.18);
+    --owl-border: rgba(29, 91, 72, 0.18);
+    --owl-header-bg: rgba(241, 255, 237, 0.84);
+    --owl-header-text: #173b34;
     --owl-text-on-accent: #ffffff;
 }
 
-body[data-theme="carbon_dark"] {
-    --owl-bg: #101114;
-    --owl-surface: #394657;
-    --owl-surface-soft: #445367;
-    --owl-strong-surface: #50627a;
-    --owl-text: #ffffff;
-    --owl-text-soft: #f8fbff;
-    --owl-muted: #e8eef8;
-    --owl-structure: #d3ddeb;
-    --owl-accent: #ffb000;
-    --owl-accent-soft: rgba(255,176,0,0.27);
-    --owl-accent-strong: #ffc23d;
-    --owl-shadow: 0 20px 54px rgba(0, 0, 0, 0.56);
-    --owl-border: rgba(188, 201, 222, 0.64);
-    --owl-header-bg: rgba(22, 24, 30, 0.95);
-    --owl-header-text: #f9fafb;
-    --owl-text-on-accent: #161616;
+body[data-theme="twilight_relic"] {
+    --owl-bg: #1a1230;
+    --owl-bg-alt: #302058;
+    --owl-surface: #271b49;
+    --owl-surface-soft: #32235d;
+    --owl-strong-surface: #47327a;
+    --owl-text: #fff7ff;
+    --owl-text-soft: #efe7ff;
+    --owl-muted: #d7c7ff;
+    --owl-structure: #9be7ff;
+    --owl-accent: #00e5ff;
+    --owl-accent-2: #ffca28;
+    --owl-accent-soft: rgba(0,229,255,0.26);
+    --owl-accent-strong: #7c4dff;
+    --owl-shadow: 0 20px 58px rgba(0, 0, 0, 0.42);
+    --owl-border: rgba(155, 231, 255, 0.26);
+    --owl-header-bg: rgba(26, 18, 48, 0.8);
+    --owl-header-text: #fff7ff;
+    --owl-text-on-accent: #131122;
 }
 
-body[data-theme="owl_dark"],
-body[data-theme="carbon_dark"] {
+body[data-theme="midnight_arcade"] {
+    --owl-bg: #08121f;
+    --owl-bg-alt: #10253d;
+    --owl-surface: #132235;
+    --owl-surface-soft: #17314c;
+    --owl-strong-surface: #21476b;
+    --owl-text: #f5feff;
+    --owl-text-soft: #e1f6ff;
+    --owl-muted: #abd8ec;
+    --owl-structure: #67f5ff;
+    --owl-accent: #ff5fd2;
+    --owl-accent-2: #00f5ff;
+    --owl-accent-soft: rgba(255,95,210,0.26);
+    --owl-accent-strong: #8b5cf6;
+    --owl-shadow: 0 20px 62px rgba(0, 0, 0, 0.48);
+    --owl-border: rgba(103, 245, 255, 0.24);
+    --owl-header-bg: rgba(8, 18, 31, 0.8);
+    --owl-header-text: #f5feff;
+    --owl-text-on-accent: #160d21;
+}
+
+body[data-theme="twilight_relic"],
+body[data-theme="midnight_arcade"] {
     color-scheme: dark;
 }
 
 body, .q-page {
     background:
-        radial-gradient(circle at 12% 18%, var(--owl-accent-soft), transparent 34%),
-        radial-gradient(circle at 88% 12%, rgba(160,160,160,0.12), transparent 28%),
+        radial-gradient(circle at 12% 14%, var(--owl-accent-soft), transparent 26%),
+        radial-gradient(circle at 88% 10%, color-mix(in srgb, var(--owl-accent-2) 18%, transparent), transparent 24%),
+        linear-gradient(135deg, var(--owl-bg) 0%, var(--owl-bg-alt) 100%),
         var(--owl-bg) !important;
     font-family: 'Exo 2', sans-serif !important;
     color: var(--owl-text) !important;
 }
 
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+        linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px);
+    background-size: 32px 32px;
+    opacity: 0.12;
+    mask-image: radial-gradient(circle at center, black 48%, transparent 100%);
+}
+
 .text-h5, .text-h6, .text-subtitle1, .text-subtitle2, h1, h2, h3 {
-    font-family: 'Rajdhani', sans-serif !important;
-    letter-spacing: 0.03em;
+    font-family: 'Orbitron', sans-serif !important;
+    letter-spacing: 0.06em;
 }
 
 .q-header {
     background: var(--owl-header-bg) !important;
     color: var(--owl-header-text) !important;
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(14px);
     border-bottom: 1px solid var(--owl-border);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12) !important;
 }
 
 .q-card {
     color: var(--owl-text) !important;
-    background: linear-gradient(180deg, var(--owl-surface) 0%, var(--owl-surface-soft) 100%) !important;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--owl-surface) 82%, white) 0%, var(--owl-surface-soft) 100%) !important;
     border: 1px solid var(--owl-border);
 }
 
@@ -441,13 +471,15 @@ body[data-theme="carbon_dark"] .hrp-stat-card {
 }
 
 .q-field--outlined .q-field__control {
-    border-radius: 12px;
+    border-radius: 16px;
     border: 1px solid var(--owl-border);
-    background: var(--owl-surface);
+    background: color-mix(in srgb, var(--owl-surface) 90%, white);
 }
 
 .q-btn {
-    border-radius: 11px;
+    border-radius: 16px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
 }
 
 .q-btn--flat {
@@ -455,38 +487,57 @@ body[data-theme="carbon_dark"] .hrp-stat-card {
 }
 
 .q-btn--unelevated {
-    background: var(--owl-accent) !important;
+    background: linear-gradient(135deg, var(--owl-accent) 0%, var(--owl-accent-strong) 100%) !important;
     color: var(--owl-text-on-accent) !important;
+    box-shadow: 0 10px 24px color-mix(in srgb, var(--owl-accent) 40%, transparent);
 }
 
 .hrp-matrix-cell {
     min-width: 110px;
     min-height: 60px;
-    transition: background 0.15s;
+    transition: background 0.18s, transform 0.18s, box-shadow 0.18s;
+    border-radius: 14px;
 }
 
 .hrp-matrix-cell:hover {
-    filter: brightness(0.96);
+    transform: translateY(-1px) scale(1.02);
+    box-shadow: 0 10px 22px rgba(0,0,0,0.12);
 }
 
 .hrp-card {
-    border-radius: 18px !important;
-    background: linear-gradient(180deg, var(--owl-surface) 0%, var(--owl-surface-soft) 100%) !important;
+    border-radius: 24px !important;
+    background: linear-gradient(160deg, color-mix(in srgb, var(--owl-surface) 88%, white) 0%, var(--owl-surface-soft) 100%) !important;
     box-shadow: var(--owl-shadow) !important;
     border: 1px solid var(--owl-border);
     transition: transform 0.18s, box-shadow 0.18s;
+    position: relative;
+    overflow: hidden;
+}
+
+.hrp-card::after,
+.hrp-stat-card::after {
+    content: "";
+    position: absolute;
+    inset: auto -20% 68% auto;
+    width: 160px;
+    height: 160px;
+    border-radius: 999px;
+    background: radial-gradient(circle, color-mix(in srgb, var(--owl-accent-2) 26%, transparent) 0%, transparent 72%);
+    pointer-events: none;
 }
 
 .hrp-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18) !important;
+    transform: translateY(-4px) rotate(-0.25deg);
+    box-shadow: 0 22px 46px rgba(0, 0, 0, 0.2) !important;
 }
 
 .hrp-stat-card {
-    border-radius: 16px !important;
-    background: linear-gradient(180deg, var(--owl-surface) 0%, var(--owl-surface-soft) 100%) !important;
+    border-radius: 22px !important;
+    background: linear-gradient(160deg, color-mix(in srgb, var(--owl-surface) 86%, white) 0%, var(--owl-surface-soft) 100%) !important;
     box-shadow: var(--owl-shadow) !important;
     border: 1px solid var(--owl-border);
+    position: relative;
+    overflow: hidden;
 }
 
 .hrp-tag {
@@ -524,31 +575,81 @@ body[data-theme="carbon_dark"] .hrp-stat-card {
 }
 
 .hrp-wordmark {
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Orbitron', sans-serif;
     font-size: 22px;
-    font-weight: 700;
-    letter-spacing: 0.22em;
+    font-weight: 800;
+    letter-spacing: 0.18em;
     color: var(--owl-text);
+    text-shadow: 0 0 18px color-mix(in srgb, var(--owl-accent) 32%, transparent);
 }
 
 .hrp-submark {
     font-family: 'Exo 2', sans-serif;
     font-size: 11px;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
     color: var(--owl-muted);
 }
 
-.hrp-theme-switch .q-toggle__inner {
-    color: var(--owl-accent) !important;
+.hrp-crest {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    position: relative;
+    background: linear-gradient(135deg, var(--owl-accent) 0%, var(--owl-accent-2) 100%);
+    box-shadow: 0 12px 24px color-mix(in srgb, var(--owl-accent) 34%, transparent);
+    border: 2px solid color-mix(in srgb, white 46%, var(--owl-accent-2));
+}
+
+.hrp-crest::before,
+.hrp-crest::after {
+    content: "";
+    position: absolute;
+    inset: 12px;
+    clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+    background: rgba(255,255,255,0.88);
+}
+
+.hrp-crest::after {
+    inset: 19px 15px 9px;
+    background: var(--owl-strong-surface);
+}
+
+.hrp-login-shell {
+    border-radius: 30px !important;
+}
+
+.hrp-login-shell::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--owl-accent) 18%, transparent), transparent 36%, color-mix(in srgb, var(--owl-accent-2) 18%, transparent));
 }
 
 .hrp-theme-select {
-    min-width: 170px;
+    min-width: 190px;
 }
 
 .hrp-theme-select .q-field__control {
-    background: var(--owl-surface) !important;
+    background: color-mix(in srgb, var(--owl-surface) 88%, white) !important;
+    border-radius: 16px !important;
+}
+
+.hrp-nav-card {
+    border-radius: 24px !important;
+    overflow: hidden;
+}
+
+.hrp-panel-title {
+    font-family: 'Orbitron', sans-serif !important;
+    color: var(--owl-text) !important;
+}
+
+.hrp-quest-subtitle {
+    color: var(--owl-muted) !important;
+    letter-spacing: 0.08em;
 }
 
 /* Map legacy inline colors to the new theme palette */
@@ -580,8 +681,9 @@ LOGIN_CSS = """
 <style>
 body, .q-page, .nicegui-content {
     background:
-        radial-gradient(circle at 14% 18%, var(--owl-accent-soft), transparent 40%),
-        radial-gradient(circle at 82% 14%, rgba(160,160,160,0.15), transparent 30%),
+    radial-gradient(circle at 14% 18%, var(--owl-accent-soft), transparent 28%),
+    radial-gradient(circle at 82% 14%, color-mix(in srgb, var(--owl-accent-2) 24%, transparent), transparent 22%),
+    linear-gradient(135deg, var(--owl-bg) 0%, var(--owl-bg-alt) 100%),
         var(--owl-bg) !important;
 }
 </style>
@@ -603,20 +705,21 @@ def login_page():
     ui.add_head_html(LOGIN_CSS)
     ui.run_javascript(f"document.body.setAttribute('data-theme', '{theme_key}')")
 
-    with ui.card().classes("absolute-center w-[420px] rounded-2xl px-4 py-3").style(
+    with ui.card().classes("absolute-center w-[460px] rounded-2xl px-5 py-4 hrp-login-shell").style(
         "box-shadow: var(--owl-shadow); border: 1px solid var(--owl-border);"
     ):
         with ui.row().classes("w-full items-center justify-between mb-2"):
             with ui.row().classes("items-center gap-2"):
-                ui.image("ci/logo (1).jpg").classes("w-11 h-11 rounded-full object-cover")
+                ui.html('<div class="hrp-crest"></div>')
                 with ui.column().classes("gap-0"):
                     ui.label("O.W.L.").classes("hrp-wordmark")
-                    ui.label("Open Work Lab").classes("hrp-submark")
+                    ui.label("Quest Grid").classes("hrp-submark")
             theme_select = ui.select(THEME_OPTIONS, value=theme_key, label="Theme", on_change=lambda e: set_theme(e.value)).props("outlined dense options-dense").classes("hrp-theme-select")
 
-        with ui.column().classes("w-full items-center gap-2 py-2"):
-            ui.label("Haushalts-Planer").classes("text-h5 font-bold")
-            ui.label("Anmelden, um fortzufahren").classes("text-caption mb-2").style("color: var(--owl-muted);")
+        with ui.column().classes("w-full items-center gap-2 py-3"):
+            ui.label("Household Quest Board").classes("text-h5 font-bold hrp-panel-title")
+            ui.label("Level up chores, streaks and team wins.").classes("text-caption mb-1 hrp-quest-subtitle")
+            ui.label("Fantasy-tech vibes, but still practical.").classes("text-caption mb-2 hrp-quest-subtitle")
 
         username_input = ui.input("Benutzername").props("outlined rounded").classes("w-full")
         password_input = ui.input("Passwort", password=True, password_toggle_button=True).props("outlined rounded").classes("w-full")
@@ -700,12 +803,12 @@ def main_page():
         return _month_dates(start)
 
     # --------------- Header ---------------
-    with ui.header().classes("items-center justify-between px-6 py-2"):
+    with ui.header().classes("items-center justify-between px-6 py-3"):
         with ui.row().classes("items-center gap-3"):
-            ui.image("ci/logo (1).jpg").classes("w-9 h-9 rounded-full object-cover")
+            ui.html('<div class="hrp-crest"></div>')
             with ui.column().classes("gap-0"):
                 ui.label("O.W.L.").classes("hrp-wordmark")
-                ui.label("Open Work Lab").classes("hrp-submark")
+                ui.label("Household Quest Board").classes("hrp-submark")
         with ui.row().classes("items-center gap-3"):
             ui.icon("person", size="20px").style("color: var(--owl-accent);")
             ui.label(user.username).classes("text-sm font-medium").style("color: var(--owl-text);")
@@ -729,7 +832,7 @@ def main_page():
     # --------------- Navigation ---------------
     _custom_row_holder: list = [None]
 
-    with ui.card().classes("w-full rounded-xl mx-4 mt-3 px-4 py-3").style(
+    with ui.card().classes("w-full rounded-xl mx-4 mt-3 px-4 py-3 hrp-nav-card").style(
         "background: #ffffff; box-shadow: 0 2px 8px rgba(10,37,64,0.08); border-bottom: 2px solid rgba(0,229,255,0.4);"
     ):
         with ui.row().classes("w-full items-center justify-center gap-4 flex-wrap"):
