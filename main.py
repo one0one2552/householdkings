@@ -448,32 +448,47 @@ body::before {
     color: var(--owl-text) !important;
 }
 
-body[data-theme="owl_dark"] .q-item__label,
-body[data-theme="owl_dark"] .q-checkbox__label,
-body[data-theme="owl_dark"] .q-toggle__label,
-body[data-theme="owl_dark"] .q-field__label,
-body[data-theme="owl_dark"] .q-field__native,
-body[data-theme="owl_dark"] .q-field__input,
-body[data-theme="carbon_dark"] .q-item__label,
-body[data-theme="carbon_dark"] .q-checkbox__label,
-body[data-theme="carbon_dark"] .q-toggle__label,
-body[data-theme="carbon_dark"] .q-field__label,
-body[data-theme="carbon_dark"] .q-field__native,
-body[data-theme="carbon_dark"] .q-field__input {
+body[data-theme="twilight_relic"] .q-item__label,
+body[data-theme="twilight_relic"] .q-checkbox__label,
+body[data-theme="twilight_relic"] .q-toggle__label,
+body[data-theme="twilight_relic"] .q-field__label,
+body[data-theme="twilight_relic"] .q-field__native,
+body[data-theme="twilight_relic"] .q-field__input,
+body[data-theme="midnight_arcade"] .q-item__label,
+body[data-theme="midnight_arcade"] .q-checkbox__label,
+body[data-theme="midnight_arcade"] .q-toggle__label,
+body[data-theme="midnight_arcade"] .q-field__label,
+body[data-theme="midnight_arcade"] .q-field__native,
+body[data-theme="midnight_arcade"] .q-field__input {
     color: var(--owl-text) !important;
 }
 
-body[data-theme="owl_dark"] .q-card,
-body[data-theme="carbon_dark"] .q-card,
-body[data-theme="owl_dark"] .hrp-stat-card,
-body[data-theme="carbon_dark"] .hrp-stat-card {
+body[data-theme="twilight_relic"] .q-card,
+body[data-theme="midnight_arcade"] .q-card,
+body[data-theme="twilight_relic"] .hrp-stat-card,
+body[data-theme="midnight_arcade"] .hrp-stat-card {
     color: var(--owl-text) !important;
+}
+
+body[data-theme="twilight_relic"] .q-card,
+body[data-theme="midnight_arcade"] .q-card,
+body[data-theme="twilight_relic"] .hrp-card,
+body[data-theme="midnight_arcade"] .hrp-card,
+body[data-theme="twilight_relic"] .hrp-stat-card,
+body[data-theme="midnight_arcade"] .hrp-stat-card {
+    background: linear-gradient(160deg, var(--owl-strong-surface) 0%, var(--owl-surface) 100%) !important;
+    border-color: color-mix(in srgb, var(--owl-structure) 22%, var(--owl-border)) !important;
 }
 
 .q-field--outlined .q-field__control {
     border-radius: 16px;
     border: 1px solid var(--owl-border);
     background: color-mix(in srgb, var(--owl-surface) 90%, white);
+}
+
+body[data-theme="twilight_relic"] .q-field--outlined .q-field__control,
+body[data-theme="midnight_arcade"] .q-field--outlined .q-field__control {
+    background: linear-gradient(180deg, var(--owl-strong-surface) 0%, var(--owl-surface) 100%) !important;
 }
 
 .q-btn {
@@ -664,14 +679,14 @@ body[data-theme="carbon_dark"] .hrp-stat-card {
 [style*="color: #e2e8f0"], [style*="color:#e2e8f0"] { color: var(--owl-text-soft) !important; }
 [style*="background: rgba(0,229,255,0.25)"], [style*="background: rgba(0,229,255,0.2)"] { background: var(--owl-accent-soft) !important; }
 
-body[data-theme="owl_dark"] [style*="color: #64748b"],
-body[data-theme="owl_dark"] [style*="color:#64748b"],
-body[data-theme="owl_dark"] [style*="color: #94a3b8"],
-body[data-theme="owl_dark"] [style*="color:#94a3b8"],
-body[data-theme="carbon_dark"] [style*="color: #64748b"],
-body[data-theme="carbon_dark"] [style*="color:#64748b"],
-body[data-theme="carbon_dark"] [style*="color: #94a3b8"],
-body[data-theme="carbon_dark"] [style*="color:#94a3b8"] {
+body[data-theme="twilight_relic"] [style*="color: #64748b"],
+body[data-theme="twilight_relic"] [style*="color:#64748b"],
+body[data-theme="twilight_relic"] [style*="color: #94a3b8"],
+body[data-theme="twilight_relic"] [style*="color:#94a3b8"],
+body[data-theme="midnight_arcade"] [style*="color: #64748b"],
+body[data-theme="midnight_arcade"] [style*="color:#64748b"],
+body[data-theme="midnight_arcade"] [style*="color: #94a3b8"],
+body[data-theme="midnight_arcade"] [style*="color:#94a3b8"] {
     color: var(--owl-text-soft) !important;
 }
 </style>
@@ -714,7 +729,7 @@ COMPLETION_EFFECT_ASSETS = """
 }
 .hrp-matrix-shell {
     border-radius: 24px;
-    overflow: hidden;
+    overflow-y: hidden;
 }
 body[data-theme="twilight_relic"] .hrp-nav-card,
 body[data-theme="midnight_arcade"] .hrp-nav-card,
@@ -724,6 +739,11 @@ body[data-theme="twilight_relic"] .hrp-matrix-shell,
 body[data-theme="midnight_arcade"] .hrp-matrix-shell {
     background: linear-gradient(180deg, var(--owl-strong-surface) 0%, var(--owl-surface) 100%) !important;
     border-color: color-mix(in srgb, var(--owl-structure) 26%, var(--owl-border)) !important;
+}
+
+body[data-theme="twilight_relic"] .hrp-matrix-cell,
+body[data-theme="midnight_arcade"] .hrp-matrix-cell {
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
 }
 .hrp-celebration {
     position: fixed;
