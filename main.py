@@ -345,8 +345,8 @@ body[data-theme="twilight_relic"] {
     --owl-surface: #271b49;
     --owl-surface-soft: #32235d;
     --owl-strong-surface: #47327a;
-    --owl-text: #fff7ff;
-    --owl-text-soft: #efe7ff;
+    --owl-text: #eceaf3;
+    --owl-text-soft: #ddd9ea;
     --owl-muted: #d7c7ff;
     --owl-structure: #9be7ff;
     --owl-accent: #00e5ff;
@@ -356,7 +356,7 @@ body[data-theme="twilight_relic"] {
     --owl-shadow: 0 20px 58px rgba(0, 0, 0, 0.42);
     --owl-border: rgba(155, 231, 255, 0.26);
     --owl-header-bg: rgba(26, 18, 48, 0.8);
-    --owl-header-text: #fff7ff;
+    --owl-header-text: #eceaf3;
     --owl-text-on-accent: #131122;
 }
 
@@ -366,8 +366,8 @@ body[data-theme="midnight_arcade"] {
     --owl-surface: #132235;
     --owl-surface-soft: #17314c;
     --owl-strong-surface: #21476b;
-    --owl-text: #f5feff;
-    --owl-text-soft: #e1f6ff;
+    --owl-text: #e6edf2;
+    --owl-text-soft: #d3dfe8;
     --owl-muted: #abd8ec;
     --owl-structure: #67f5ff;
     --owl-accent: #ff5fd2;
@@ -377,7 +377,7 @@ body[data-theme="midnight_arcade"] {
     --owl-shadow: 0 20px 62px rgba(0, 0, 0, 0.48);
     --owl-border: rgba(103, 245, 255, 0.24);
     --owl-header-bg: rgba(8, 18, 31, 0.8);
-    --owl-header-text: #f5feff;
+    --owl-header-text: #e6edf2;
     --owl-text-on-accent: #160d21;
 }
 
@@ -721,7 +721,7 @@ body[data-theme="twilight_relic"] .hrp-nav-card .q-btn[aria-pressed="true"],
 body[data-theme="midnight_arcade"] .hrp-nav-card .q-btn[aria-pressed="true"],
 body[data-theme="twilight_relic"] .hrp-nav-card .q-btn[aria-pressed="true"] .q-btn__content,
 body[data-theme="midnight_arcade"] .hrp-nav-card .q-btn[aria-pressed="true"] .q-btn__content {
-    color: #ffffff !important;
+    color: var(--owl-text-soft) !important;
 }
 
 /* Map legacy inline colors to the new theme palette */
@@ -1727,7 +1727,7 @@ def main_page():
                                     status = _cell_status(inst, d)
                                     border_c, bg_c, icon_c = CELL_STYLES[status]
                                     is_today = d == date.today()
-                                    cell_bg = f"background: {bg_c}; border-left: 3px solid {border_c};"
+                                    cell_bg = f"background: {bg_c};"
                                     if is_today:
                                         cell_bg += " box-shadow: inset 0 0 0 2px rgba(0,194,209,0.4);"
 
