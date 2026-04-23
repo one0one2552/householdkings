@@ -110,19 +110,142 @@ def _month_dates(ref: date) -> list[date]:
     return days
 
 
-def _parse_recurrence_days(rule: str | None) -> list[int]:
-    if not rule or not rule.strip():
+def _parse_weekday_csv(value: str | None) -> list[int]:
+    if not value:
         return []
     try:
-        return sorted(set(int(x.strip()) for x in rule.split(",") if x.strip().isdigit() and 0 <= int(x.strip()) <= 6))
+        return sorted(set(int(x.strip()) for x in value.split(",") if x.strip().isdigit() and 0 <= int(x.strip()) <= 6))
     except ValueError:
         return []
 
 
-def _recurrence_days_to_str(days: list[int]) -> str | None:
-    if not days:
+def _week_start(d: date) -> date:
+    return d - timedelta(days=d.weekday())
+
+
+def _last_day_of_month(year: int, month: int) -> int:
+    first = date(year, month, 1)
+    next_month = (first + timedelta(days=32)).replace(day=1)
+    return (next_month - timedelta(days=1)).day
+
+
+def _parse_recurrence_rule(rule: str | None) -> dict:
+    config = {"kind": "weekly", "days": [], "anchor": None, "month_day": None}
+    if not rule or not rule.strip():
+        return config
+    if rule.startswith("biweekly|"):
+        parts = rule.split("|", 2)
+        config["kind"] = "biweekly"
+        config["days"] = _parse_weekday_csv(parts[1] if len(parts) > 1 else None)
+        if len(parts) > 2:
+            try:
+                config["anchor"] = date.fromisoformat(parts[2])
+            except ValueError:
+                pass
+        return config
+    if rule.startswith("monthly|"):
+        parts = rule.split("|", 2)
+        config["kind"] = "monthly"
+        if len(parts) > 1 and parts[1].isdigit():
+            month_day = int(parts[1])
+            if 1 <= month_day <= 31:
+                config["month_day"] = month_day
+        if len(parts) > 2:
+            try:
+                config["anchor"] = date.fromisoformat(parts[2])
+            except ValueError:
+                pass
+        return config
+    config["days"] = _parse_weekday_csv(rule)
+    return config
+
+
+def _parse_recurrence_days(rule: str | None) -> list[int]:
+    return _parse_recurrence_rule(rule)["days"]
+
+
+def _build_recurrence_rule(mode: str, days: list[int], anchor_date: date | None) -> str | None:
+    selected_days = sorted(set(days))
+    if mode == "monthly":
+        anchor = anchor_date or date.today()
+        return f"monthly|{anchor.day}|{anchor.isoformat()}"
+    if not selected_days:
         return None
-    return ",".join(str(d) for d in sorted(set(days)))
+    if mode == "biweekly":
+        anchor = anchor_date or date.today()
+        return f"biweekly|{','.join(str(d) for d in selected_days)}|{anchor.isoformat()}"
+    return ",".join(str(d) for d in selected_days)
+
+
+def _recurrence_matches(rule: str | None, d: date) -> bool:
+    config = _parse_recurrence_rule(rule)
+    if config["kind"] == "monthly":
+        month_day = config["month_day"]
+        anchor = config["anchor"]
+        if not month_day:
+            return False
+        if anchor and d < anchor:
+            return False
+        return d.day == min(month_day, _last_day_of_month(d.year, d.month))
+
+    rec_days = config["days"]
+    if d.weekday() not in rec_days:
+        return False
+    if config["kind"] != "biweekly":
+        return True
+
+    anchor = config["anchor"]
+    if not anchor or d < anchor:
+        return False
+    return (_week_start(d) - _week_start(anchor)).days % 14 == 0
+
+
+def _recurrence_label(rule: str | None) -> str:
+    config = _parse_recurrence_rule(rule)
+    if config["kind"] == "monthly":
+        month_day = config["month_day"]
+        return f"Monatlich am {month_day}." if month_day else "Monatlich"
+    rec_days = config["days"]
+    if not rec_days:
+        return ""
+    if len(rec_days) == 7:
+        return "Alle 2 Wochen" if config["kind"] == "biweekly" else "Täglich"
+    day_list = ", ".join(WEEKDAY_MAP[dd] for dd in rec_days)
+    if config["kind"] == "biweekly":
+        return f"Alle 2 Wochen: {day_list}"
+    return day_list
+
+
+def _parse_assignment_mode_config(mode: str | None, fallback_date: date) -> dict:
+    config = {"kind": "none", "weekday": fallback_date.weekday(), "anchor": fallback_date}
+    if not mode or mode == "none":
+        return config
+    if mode == "immer":
+        config["kind"] = "always"
+        return config
+    if mode.startswith("jeden_"):
+        try:
+            config["kind"] = "weekly"
+            config["weekday"] = int(mode.split("_", 1)[1])
+        except ValueError:
+            pass
+        return config
+    if mode.startswith("2weeks|"):
+        parts = mode.split("|", 2)
+        config["kind"] = "biweekly"
+        if len(parts) > 1 and parts[1].isdigit():
+            config["weekday"] = int(parts[1])
+        if len(parts) > 2:
+            try:
+                config["anchor"] = date.fromisoformat(parts[2])
+            except ValueError:
+                pass
+        return config
+    return config
+
+
+def _build_biweekly_assignment_mode(instance_date: date) -> str:
+    return f"2weeks|{instance_date.weekday()}|{instance_date.isoformat()}"
 
 
 def _get_excluded_dates(task: Task) -> set[date]:
@@ -159,14 +282,17 @@ def _ensure_recurring_instances(db: Session, tasks: list[Task], dates: list[date
         existing.add((inst.task_id, inst.date))
     created = False
     for task in tasks:
-        rec_days = _parse_recurrence_days(task.recurrence_rule)
-        if not rec_days:
+        config = _parse_recurrence_rule(task.recurrence_rule)
+        if config["kind"] == "monthly":
+            if not config["month_day"]:
+                continue
+        elif not config["days"]:
             continue
         excluded = _get_excluded_dates(task)
         for d in dates:
             if d in excluded:
                 continue
-            if d.weekday() in rec_days and (task.id, d) not in existing:
+            if _recurrence_matches(task.recurrence_rule, d) and (task.id, d) not in existing:
                 inst = TaskInstance(
                     id=str(uuid.uuid4()),
                     task_id=task.id,
@@ -1154,7 +1280,7 @@ def main_page():
                 ui.html(f'<span class="hrp-user-chip" style="background:{color}">{u.username[:2].upper()} {u.username}</span>')
 
     # --------------- Weekday picker with "Täglich" ---------------
-    def _weekday_picker(initial_days: list[int] | None = None) -> tuple[dict[int, ui.checkbox], ui.checkbox]:
+    def _weekday_picker(initial_days: list[int] | None = None, initial_mode: str = "weekly") -> tuple[dict[int, ui.checkbox], ui.checkbox, ui.toggle]:
         if initial_days is None:
             initial_days = []
         all_selected = set(initial_days) == set(range(7))
@@ -1171,7 +1297,12 @@ def main_page():
             for i, label in enumerate(WEEKDAY_LABELS):
                 cb = ui.checkbox(label, value=(i in initial_days))
                 checkboxes[i] = cb
-        return checkboxes, daily_cb
+            ui.separator().props("vertical").classes("h-5 mx-1")
+            recurrence_mode = ui.toggle(
+                {"weekly": "Wöchentlich", "biweekly": "Alle 2 Wochen", "monthly": "1x pro Monat"},
+                value=initial_mode,
+            ).props("rounded dense no-caps")
+        return checkboxes, daily_cb, recurrence_mode
 
     def _selected_days_from_checkboxes(checkboxes: dict[int, ui.checkbox], daily_cb: ui.checkbox) -> list[int]:
         if daily_cb.value:
@@ -1184,6 +1315,7 @@ def main_page():
         # Always re-fetch users from a fresh session to avoid DetachedInstanceError
         fresh_users = db.query(User).order_by(User.username).all()
         weekday_label = WEEKDAY_LABELS[instance_date.weekday()]
+        biweekly_mode = _build_biweekly_assignment_mode(instance_date)
 
         with ui.dialog() as dlg, ui.card().classes("w-[500px] rounded-xl").style("background: #ffffff;"):
             ui.label("Personen zuweisen").classes("text-h6 font-bold").style("color: #0A2540; font-family: Outfit, sans-serif;")
@@ -1207,6 +1339,7 @@ def main_page():
                                 "none": "Nur dieses Mal",
                                 "immer": "⟳ Immer",
                                 f"jeden_{instance_date.weekday()}": f"📅 Jeden {weekday_label}",
+                                biweekly_mode: f"🗓️ Alle 2 Wochen ab diesem {weekday_label}",
                             },
                             value=mode or "none",
                             label="Modus",
@@ -1287,6 +1420,10 @@ def main_page():
                     weekday = int(mode_val.split("_")[1])
                     if other_inst.date.weekday() == weekday:
                         should_assign = True
+                elif mode_val.startswith("2weeks|"):
+                    assignment_cfg = _parse_assignment_mode_config(mode_val, source_instance.date)
+                    if other_inst.date >= assignment_cfg["anchor"] and other_inst.date.weekday() == assignment_cfg["weekday"]:
+                        should_assign = (_week_start(other_inst.date) - _week_start(assignment_cfg["anchor"])).days % 14 == 0
                 if should_assign and uid not in [u.id for u in other_inst.assigned_users]:
                     u = db.query(User).get(uid)
                     if u:
@@ -1310,13 +1447,19 @@ def main_page():
             else:
                 tag_select = None
 
-            day_cbs, daily_cb = _weekday_picker()
+            day_cbs, daily_cb, recurrence_mode = _weekday_picker()
             ui.separator().classes("my-1")
-            ui.label("Datum (für einmalige Aufgabe, wenn kein Wochentag ausgewählt):").classes("text-caption").style("color: #64748b;")
+            ui.label("Datum (für einmalige Aufgaben sowie als Startdatum für 'Alle 2 Wochen' oder '1x pro Monat'): ").classes("text-caption").style("color: #64748b;")
             date_in = ui.input(value=date.today().isoformat()).props("outlined rounded dense type=date").classes("w-full")
 
             def save():
                 selected = _selected_days_from_checkboxes(day_cbs, daily_cb)
+                recurrence_kind = recurrence_mode.value or "weekly"
+                try:
+                    anchor_date = date.fromisoformat(date_in.value) if date_in.value else date.today()
+                except ValueError:
+                    anchor_date = date.today()
+                recurrence_rule = _build_recurrence_rule(recurrence_kind, selected, anchor_date)
                 db2 = _get_db()
                 max_order = db2.query(Task.sort_order).order_by(Task.sort_order.desc()).first()
                 next_order = (max_order[0] + 1) if max_order and max_order[0] is not None else 0
@@ -1325,8 +1468,8 @@ def main_page():
                     title=title_in.value.strip(),
                     description=desc_in.value.strip() or None,
                     base_duration_minutes=int(dur_in.value),
-                    is_recurring=len(selected) > 0,
-                    recurrence_rule=_recurrence_days_to_str(selected),
+                    is_recurring=bool(recurrence_rule),
+                    recurrence_rule=recurrence_rule,
                     sort_order=next_order,
                 )
                 if tag_select and tag_select.value:
@@ -1336,7 +1479,7 @@ def main_page():
                             t.tags.append(tag)
                 db2.add(t)
                 db2.flush()
-                if not selected and date_in.value:
+                if not recurrence_rule and date_in.value:
                     try:
                         one_time_date = date.fromisoformat(date_in.value)
                         inst_obj = TaskInstance(id=str(uuid.uuid4()), task_id=t.id, date=one_time_date, status=TaskStatus.OPEN)
@@ -1357,12 +1500,22 @@ def main_page():
 
     def _open_edit_task_dialog(task_id: str):
         db = _get_db()
-        task = db.query(Task).options(joinedload(Task.tags)).get(task_id)
+        task = db.query(Task).options(joinedload(Task.tags), joinedload(Task.instances)).get(task_id)
         if not task:
             db.close()
             return
-        current_days = _parse_recurrence_days(task.recurrence_rule)
+        recurrence_cfg = _parse_recurrence_rule(task.recurrence_rule)
+        current_days = recurrence_cfg["days"]
+        current_mode = recurrence_cfg["kind"]
         current_tag_ids = [t.id for t in task.tags]
+        first_instance_date = min((inst.date for inst in task.instances), default=date.today())
+        if recurrence_cfg["anchor"]:
+            current_anchor = recurrence_cfg["anchor"]
+        elif recurrence_cfg["kind"] == "monthly" and recurrence_cfg["month_day"]:
+            today = date.today()
+            current_anchor = date(today.year, today.month, min(recurrence_cfg["month_day"], _last_day_of_month(today.year, today.month)))
+        else:
+            current_anchor = first_instance_date
         all_tags = db.query(Tag).order_by(Tag.name).all()
         tag_options = {t.id: t.name for t in all_tags}
 
@@ -1377,17 +1530,26 @@ def main_page():
             else:
                 tag_select = None
 
-            day_cbs, daily_cb = _weekday_picker(current_days)
+            day_cbs, daily_cb, recurrence_mode = _weekday_picker(current_days, current_mode)
+            ui.separator().classes("my-1")
+            ui.label("Datum (für einmalige Aufgaben sowie als Startdatum für 'Alle 2 Wochen' oder '1x pro Monat'): ").classes("text-caption").style("color: #64748b;")
+            date_in = ui.input(value=current_anchor.isoformat()).props("outlined rounded dense type=date").classes("w-full")
 
             def save():
                 selected = _selected_days_from_checkboxes(day_cbs, daily_cb)
+                recurrence_kind = recurrence_mode.value or "weekly"
+                try:
+                    anchor_date = date.fromisoformat(date_in.value) if date_in.value else date.today()
+                except ValueError:
+                    anchor_date = date.today()
+                recurrence_rule = _build_recurrence_rule(recurrence_kind, selected, anchor_date)
                 db2 = _get_db()
                 t = db2.query(Task).options(joinedload(Task.tags)).get(task_id)
                 t.title = title_in.value.strip()
                 t.description = desc_in.value.strip() or None
                 t.base_duration_minutes = int(dur_in.value)
-                t.is_recurring = len(selected) > 0
-                t.recurrence_rule = _recurrence_days_to_str(selected)
+                t.is_recurring = bool(recurrence_rule)
+                t.recurrence_rule = recurrence_rule
                 t.tags.clear()
                 if tag_select and tag_select.value:
                     for tid in tag_select.value:
@@ -1699,9 +1861,7 @@ def main_page():
 
                     with ui.element("tbody").props('id="task-tbody"'):
                         for task in tasks:
-                            rec_days = _parse_recurrence_days(task.recurrence_rule)
-                            is_daily = len(rec_days) == 7
-                            rec_label = "Täglich" if is_daily else (", ".join(WEEKDAY_MAP[dd] for dd in rec_days) if rec_days else "")
+                            rec_label = _recurrence_label(task.recurrence_rule)
 
                             with ui.element("tr").props(f'data-task-id="{task.id}"').classes("cursor-move"):
                                 with ui.element("td").classes("p-2 sticky left-0 z-10 hrp-matrix-task-col"):
