@@ -251,11 +251,11 @@ def _cell_status(inst: TaskInstance | None, d: date) -> str:
 
 
 CELL_STYLES = {
-    "completed":  ("#10b981", "rgba(16,185,129,0.10)",  "#10b981"),
-    "assigned":   ("#00C2D1", "rgba(0,194,209,0.10)",   "#00C2D1"),
-    "unassigned": ("#f59e0b", "rgba(245,158,11,0.08)",  "#f59e0b"),
-    "overdue":    ("#ef4444", "rgba(239,68,68,0.10)",   "#ef4444"),
-    "inactive":   ("#94a3b8", "rgba(148,163,184,0.10)", "#94a3b8"),
+    "completed":  ("#22c55e", "rgba(34,197,94,0.26)",   "#22c55e"),
+    "assigned":   ("#38bdf8", "rgba(56,189,248,0.28)",  "#38bdf8"),
+    "unassigned": ("#ffb703", "rgba(255,183,3,0.28)",   "#ffb703"),
+    "overdue":    ("#ff4d6d", "rgba(255,77,109,0.24)",  "#ff4d6d"),
+    "inactive":   ("#94a3b8", "rgba(148,163,184,0.18)", "#94a3b8"),
 }
 
 THEME_OPTIONS = {
@@ -691,6 +691,149 @@ body, .q-page, .nicegui-content {
 
 SORTABLE_JS = '<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>'
 
+COMPLETION_EFFECT_ASSETS = """
+<style>
+.hrp-cell-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 8px;
+}
+.hrp-cell-actions .q-btn,
+.hrp-list-actions .q-btn {
+    min-width: 0 !important;
+}
+.hrp-list-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+    align-items: center;
+    max-width: 240px;
+}
+.hrp-matrix-shell {
+    border-radius: 24px;
+    overflow: hidden;
+}
+body[data-theme="twilight_relic"] .hrp-nav-card,
+body[data-theme="midnight_arcade"] .hrp-nav-card,
+body[data-theme="twilight_relic"] .hrp-stat-card,
+body[data-theme="midnight_arcade"] .hrp-stat-card,
+body[data-theme="twilight_relic"] .hrp-matrix-shell,
+body[data-theme="midnight_arcade"] .hrp-matrix-shell {
+    background: linear-gradient(180deg, var(--owl-strong-surface) 0%, var(--owl-surface) 100%) !important;
+    border-color: color-mix(in srgb, var(--owl-structure) 26%, var(--owl-border)) !important;
+}
+.hrp-celebration {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle, rgba(255,255,255,0.10), rgba(0,0,0,0.16));
+    backdrop-filter: blur(3px);
+    animation: hrpCelebrateFade 0.9s ease forwards;
+}
+.hrp-celebration-panel {
+    position: relative;
+    min-width: 280px;
+    padding: 22px 26px;
+    border-radius: 24px;
+    background: linear-gradient(135deg, #fff4bd 0%, #ffd166 45%, #7c4dff 100%);
+    color: #1b1533;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.28);
+    text-align: center;
+    overflow: hidden;
+}
+.hrp-celebration-panel::before {
+    content: "";
+    position: absolute;
+    inset: -40% auto auto -10%;
+    width: 140px;
+    height: 140px;
+    background: radial-gradient(circle, rgba(255,255,255,0.68), transparent 70%);
+}
+.hrp-celebration-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+}
+.hrp-celebration-sub {
+    font-family: 'Exo 2', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+}
+.hrp-celebration-skip {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    border: 0;
+    border-radius: 999px;
+    padding: 5px 10px;
+    background: rgba(27,21,51,0.14);
+    color: #1b1533;
+    font-weight: 700;
+    cursor: pointer;
+}
+.hrp-spark {
+    position: absolute;
+    font-size: 22px;
+    animation: hrpSparkFly 0.9s ease-out forwards;
+    opacity: 0;
+}
+@keyframes hrpCelebrateFade {
+    0% { opacity: 0; }
+    8% { opacity: 1; }
+    85% { opacity: 1; }
+    100% { opacity: 0; }
+}
+@keyframes hrpSparkFly {
+    0% { transform: translate(0, 0) scale(0.2) rotate(0deg); opacity: 0; }
+    18% { opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(1.18) rotate(240deg); opacity: 0; }
+}
+</style>
+<script>
+window.hrpCelebrate = function() {
+  if (window.__hrpCelebrateCleanup) {
+    window.__hrpCelebrateCleanup();
+  }
+  const overlay = document.createElement('div');
+  overlay.className = 'hrp-celebration';
+  overlay.innerHTML = '<div class="hrp-celebration-panel"><button class="hrp-celebration-skip">Skip</button><div class="hrp-celebration-title">Quest Complete!</div><div class="hrp-celebration-sub">Shiny rewards. Zero dust monsters.</div></div>';
+  const panel = overlay.querySelector('.hrp-celebration-panel');
+  const sparkles = ['✦', '✧', '◆', '⚡', '🟡', '💠'];
+  for (let i = 0; i < 18; i++) {
+    const spark = document.createElement('div');
+    spark.className = 'hrp-spark';
+    spark.textContent = sparkles[i % sparkles.length];
+    spark.style.left = '50%';
+    spark.style.top = '50%';
+    spark.style.setProperty('--dx', `${(Math.random() * 260 - 130).toFixed(0)}px`);
+    spark.style.setProperty('--dy', `${(Math.random() * 220 - 160).toFixed(0)}px`);
+    panel.appendChild(spark);
+  }
+  const cleanup = () => {
+    if (overlay.isConnected) overlay.remove();
+    if (window.__hrpCelebrateTimer) clearTimeout(window.__hrpCelebrateTimer);
+    window.__hrpCelebrateCleanup = null;
+  };
+  overlay.addEventListener('click', cleanup);
+  overlay.querySelector('.hrp-celebration-skip').addEventListener('click', (event) => {
+    event.stopPropagation();
+    cleanup();
+  });
+  document.body.appendChild(overlay);
+  window.__hrpCelebrateCleanup = cleanup;
+  window.__hrpCelebrateTimer = setTimeout(cleanup, 900);
+};
+</script>
+"""
+
 
 # ---------------------------------------------------------------------------
 # NiceGUI pages
@@ -758,6 +901,7 @@ def main_page():
     dark_mode = ui.dark_mode(_is_dark_theme(theme_key))
     ui.add_head_html(CUSTOM_CSS)
     ui.add_head_html(SORTABLE_JS)
+    ui.add_head_html(COMPLETION_EFFECT_ASSETS)
     ui.run_javascript(f"document.body.setAttribute('data-theme', '{theme_key}')")
     user = _current_user(nicegui_app.storage.user)
     if not user:
@@ -801,6 +945,9 @@ def main_page():
         if state["start_today"]:
             return [today + timedelta(days=i) for i in range(30)]
         return _month_dates(start)
+
+    def _celebrate_completion():
+        ui.run_javascript("window.hrpCelebrate && window.hrpCelebrate();")
 
     # --------------- Header ---------------
     with ui.header().classes("items-center justify-between px-6 py-3"):
@@ -1455,7 +1602,7 @@ def main_page():
                         ui.html(f'<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:{bc}"></span>')
                         ui.label(lbl).classes("text-xs").style("color: #64748b;")
 
-            with ui.element("div").props('id="hrp-scroll-container"').classes("w-full overflow-x-auto rounded-xl").style(
+            with ui.element("div").props('id="hrp-scroll-container"').classes("w-full overflow-x-auto rounded-xl hrp-matrix-shell").style(
                 "background: #ffffff; box-shadow: 0 2px 8px rgba(10,37,64,0.06);"
             ):
                 with ui.element("table").classes("w-full border-collapse text-xs"):
@@ -1484,7 +1631,7 @@ def main_page():
                                     with ui.row().classes("items-center gap-2 no-wrap"):
                                         if is_admin:
                                             ui.icon("drag_indicator", size="16px", color="grey").classes("drag-handle cursor-grab")
-                                        ui.icon("task_alt", size="16px").style("color: #00C2D1;")
+                                        ui.icon("auto_awesome", size="16px").style("color: #00C2D1;")
                                         with ui.column().classes("gap-0"):
                                             with ui.row().classes("items-center gap-1"):
                                                 ui.label(task.title).classes("font-bold text-sm").style("color: #0A2540;")
@@ -1551,7 +1698,7 @@ def main_page():
                     db2.commit()
                     db2.close()
                     rebuild()
-                ui.button(icon="add", on_click=activate).props("flat round dense size=sm").style("color: #00C2D1;")
+                ui.button(icon="add_circle", on_click=activate).props("flat round dense size=sm").style("color: #00C2D1;")
             else:
                 ui.label("–").style("color: #94a3b8;")
         else:
@@ -1569,12 +1716,12 @@ def main_page():
             else:
                 ui.html(f'<span style="color:{icon_c}; font-size:10px;">⚠ offen</span>')
 
-            with ui.column().classes("items-center gap-0 mt-1"):
-                with ui.row().classes("gap-0 justify-center"):
+            with ui.column().classes("items-center gap-0 mt-1 w-full"):
+                with ui.row().classes("hrp-cell-actions"):
                     if is_admin:
                         def open_assign(iid=inst.id, dt=d, t=task, aids=assigned_ids):
                             _open_assign_dialog(iid, dt, t, users_all, aids)
-                        ui.button(icon="group_add", on_click=open_assign).props("flat round dense size=sm").style("color: #00C2D1;")
+                        ui.button(icon="groups", on_click=open_assign).props("flat round dense size=sm").style("color: #38bdf8;")
                     elif user.can_self_assign:
                         if user.id in assigned_ids:
                             def remove_self(iid=inst.id, uid=user.id):
@@ -1599,27 +1746,30 @@ def main_page():
                                         db2.commit()
                                 db2.close()
                                 rebuild()
-                            ui.button(icon="person_add", on_click=add_self).props("flat round dense size=sm").style("color: #00C2D1;")
+                            ui.button(icon="person_add_alt_1", on_click=add_self).props("flat round dense size=sm").style("color: #38bdf8;")
 
                     if is_admin or user.id in assigned_ids:
                         def toggle_status(iid=inst.id):
                             db2 = _get_db()
+                            did_complete = False
                             instance = db2.query(TaskInstance).get(iid)
                             if instance:
-                                instance.status = TaskStatus.COMPLETED if instance.status == TaskStatus.OPEN else TaskStatus.OPEN
+                                was_open = instance.status == TaskStatus.OPEN
+                                instance.status = TaskStatus.COMPLETED if was_open else TaskStatus.OPEN
+                                did_complete = was_open
                                 db2.commit()
                             db2.close()
+                            if did_complete:
+                                _celebrate_completion()
                             ui.notify("Status aktualisiert", type="positive")
                             rebuild()
-                        icon_name = "check_circle" if completed else "radio_button_unchecked"
+                        icon_name = "verified" if completed else "flare"
                         ui.button(icon=icon_name, on_click=toggle_status).props(f"flat round dense size=sm color={'green' if completed else 'grey'}")
 
-                with ui.row().classes("gap-0 justify-center"):
-                    # Notes button
                     def open_notes(iid=inst.id, dt=d, tt=task.title):
                         _open_notes_dialog(iid, dt, tt)
-                    note_color = "#00C2D1" if inst.notes else "#94a3b8"
-                    ui.button(icon="sticky_note_2", on_click=open_notes).props("flat round dense size=sm").style(f"color: {note_color};")
+                    note_color = "#8b5cf6" if inst.notes else "#94a3b8"
+                    ui.button(icon="menu_book", on_click=open_notes).props("flat round dense size=sm").style(f"color: {note_color};")
 
                     if is_admin:
                         def deactivate(iid=inst.id, dt=d, t_id=task.id):
@@ -1633,7 +1783,7 @@ def main_page():
                                 db2.commit()
                             db2.close()
                             rebuild()
-                        ui.button(icon="close", on_click=deactivate).props("flat round dense size=sm color=red")
+                        ui.button(icon="delete_forever", on_click=deactivate).props("flat round dense size=sm color=red")
 
     def _build_list():
         mobile_container.clear()
@@ -1706,13 +1856,13 @@ def main_page():
                         with ui.row().classes("items-center justify-between w-full"):
                             with ui.row().classes("items-center gap-3"):
                                 if status == "completed":
-                                    ui.icon("check_circle", size="24px", color="#10b981")
+                                    ui.icon("verified", size="24px", color="#22c55e")
                                 elif status == "overdue":
-                                    ui.icon("warning", size="24px", color="#ef4444")
+                                    ui.icon("warning_amber", size="24px", color="#ff4d6d")
                                 elif status == "assigned":
-                                    ui.icon("person", size="24px").style("color: #00C2D1;")
+                                    ui.icon("shield", size="24px").style("color: #38bdf8;")
                                 elif status == "unassigned":
-                                    ui.icon("help_outline", size="24px", color="#f59e0b")
+                                    ui.icon("explore", size="24px", color="#ffb703")
                                 else:
                                     ui.icon("radio_button_unchecked", size="24px", color="#94a3b8")
 
@@ -1730,13 +1880,13 @@ def main_page():
                                         elif status == "inactive":
                                             ui.label("Nicht aktiv").classes("text-xs italic").style("color: #94a3b8;")
 
-                            with ui.row().classes("items-center gap-1"):
+                            with ui.row().classes("hrp-list-actions"):
                                 if inst is not None:
                                     assigned_ids = [u.id for u in inst.assigned_users]
                                     if is_admin:
                                         def open_a(iid=inst.id, dt=d, t=task, aids=assigned_ids):
                                             _open_assign_dialog(iid, dt, t, users_all, aids)
-                                        ui.button(icon="group_add", on_click=open_a).props("flat round dense").style("color: #00C2D1;")
+                                        ui.button(icon="groups", on_click=open_a).props("flat round dense").style("color: #38bdf8;")
                                     elif user.can_self_assign:
                                         if user.id in assigned_ids:
                                             def rem_self_l(iid=inst.id, uid=user.id):
@@ -1761,29 +1911,34 @@ def main_page():
                                                         db2.commit()
                                                 db2.close()
                                                 rebuild()
-                                            ui.button(icon="person_add", on_click=add_self_l).props("flat round dense").style("color: #00C2D1;")
+                                            ui.button(icon="person_add_alt_1", on_click=add_self_l).props("flat round dense").style("color: #38bdf8;")
 
                                     if is_admin or user.id in assigned_ids:
                                         completed = inst.status == TaskStatus.COMPLETED
                                         def toggle_list(iid=inst.id):
                                             db2 = _get_db()
+                                            did_complete = False
                                             instance = db2.query(TaskInstance).get(iid)
                                             if instance:
-                                                instance.status = TaskStatus.COMPLETED if instance.status == TaskStatus.OPEN else TaskStatus.OPEN
+                                                was_open = instance.status == TaskStatus.OPEN
+                                                instance.status = TaskStatus.COMPLETED if was_open else TaskStatus.OPEN
+                                                did_complete = was_open
                                                 db2.commit()
                                             db2.close()
+                                            if did_complete:
+                                                _celebrate_completion()
                                             ui.notify("Status aktualisiert", type="positive")
                                             rebuild()
                                         if completed:
-                                            ui.button("Erledigt", on_click=toggle_list, icon="check_circle", color="green").props("rounded unelevated no-caps size=sm")
+                                            ui.button("Erledigt", on_click=toggle_list, icon="verified", color="green").props("rounded unelevated no-caps size=sm")
                                         else:
-                                            ui.button("Erledigen", on_click=toggle_list, icon="radio_button_unchecked").props("rounded unelevated no-caps size=sm").style("background: #00C2D1; color: white;")
+                                            ui.button("Erledigen", on_click=toggle_list, icon="flare").props("rounded unelevated no-caps size=sm").style("background: #00C2D1; color: white;")
 
                                     # Notes button in list
                                     def open_notes_l(iid=inst.id, dt=d, tt=task.title):
                                         _open_notes_dialog(iid, dt, tt)
-                                    note_col = "#00C2D1" if inst.notes else "#94a3b8"
-                                    ui.button(icon="sticky_note_2", on_click=open_notes_l).props("flat round dense").style(f"color: {note_col};")
+                                    note_col = "#8b5cf6" if inst.notes else "#94a3b8"
+                                    ui.button(icon="menu_book", on_click=open_notes_l).props("flat round dense").style(f"color: {note_col};")
 
                                     if is_admin:
                                         def deactivate_l(iid=inst.id, dt=d, t_id=task.id):
@@ -1797,7 +1952,7 @@ def main_page():
                                                 db2.commit()
                                             db2.close()
                                             rebuild()
-                                        ui.button(icon="close", on_click=deactivate_l).props("flat round dense size=sm color=red")
+                                        ui.button(icon="delete_forever", on_click=deactivate_l).props("flat round dense size=sm color=red")
                                 else:
                                     if is_admin:
                                         def activate_l(t_id=task.id, dt=d):
@@ -1810,7 +1965,7 @@ def main_page():
                                             db2.commit()
                                             db2.close()
                                             rebuild()
-                                        ui.button("Aktivieren", on_click=activate_l, icon="add_circle_outline").props("flat rounded no-caps size=sm").style("color: #00C2D1;")
+                                        ui.button("Aktivieren", on_click=activate_l, icon="add_circle").props("flat rounded no-caps size=sm").style("color: #00C2D1;")
 
         db.close()
 
@@ -1929,11 +2084,11 @@ def main_page():
                                         with ui.row().classes("items-center justify-between w-full"):
                                             with ui.row().classes("items-center gap-2"):
                                                 if status == "completed":
-                                                    ui.icon("check_circle", size="18px", color="#10b981")
+                                                    ui.icon("verified", size="18px", color="#22c55e")
                                                 elif status == "overdue":
-                                                    ui.icon("warning", size="18px", color="#ef4444")
+                                                    ui.icon("warning_amber", size="18px", color="#ff4d6d")
                                                 else:
-                                                    ui.icon("radio_button_unchecked", size="18px").style("color: #00C2D1;")
+                                                    ui.icon("shield", size="18px").style("color: #38bdf8;")
                                                 ui.label(inst.task.title).classes("text-sm font-medium").style("color: #0A2540;")
                                                 ui.badge(f"{inst.task.base_duration_minutes} min", color="cyan").props("rounded")
                                                 _render_tags(inst.task.tags)
@@ -1943,17 +2098,22 @@ def main_page():
                                                 completed = inst.status == TaskStatus.COMPLETED
                                                 def toggle_s(iid=inst.id):
                                                     db3 = _get_db()
+                                                    did_complete = False
                                                     instance = db3.query(TaskInstance).get(iid)
                                                     if instance:
-                                                        instance.status = TaskStatus.COMPLETED if instance.status == TaskStatus.OPEN else TaskStatus.OPEN
+                                                        was_open = instance.status == TaskStatus.OPEN
+                                                        instance.status = TaskStatus.COMPLETED if was_open else TaskStatus.OPEN
+                                                        did_complete = was_open
                                                         db3.commit()
                                                     db3.close()
+                                                    if did_complete:
+                                                        _celebrate_completion()
                                                     ui.notify("Status aktualisiert", type="positive")
                                                     rebuild()
                                                 if completed:
-                                                    ui.button(icon="check_circle", on_click=toggle_s).props("flat round dense size=xs color=green")
+                                                    ui.button(icon="verified", on_click=toggle_s).props("flat round dense size=xs color=green")
                                                 else:
-                                                    ui.button(icon="radio_button_unchecked", on_click=toggle_s).props("flat round dense size=xs color=grey")
+                                                    ui.button(icon="flare", on_click=toggle_s).props("flat round dense size=xs color=grey")
 
                         _render_task_section(f"Heute – {today.strftime('%d.%m.%Y')}", "today", "#3b82f6", user_today)
                         _render_task_section(f"Morgen – {tomorrow.strftime('%d.%m.%Y')}", "event", "#8b5cf6", user_tomorrow)
