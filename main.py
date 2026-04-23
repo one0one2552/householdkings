@@ -698,6 +698,32 @@ body[data-theme="midnight_arcade"] .hrp-matrix-task-col {
     background: linear-gradient(180deg, var(--owl-strong-surface) 0%, var(--owl-surface) 100%) !important;
 }
 
+.hrp-matrix-task-title {
+    color: var(--owl-text) !important;
+}
+
+.hrp-matrix-task-meta {
+    color: var(--owl-text-soft) !important;
+}
+
+body[data-theme="twilight_relic"] .hrp-nav-card .q-btn,
+body[data-theme="midnight_arcade"] .hrp-nav-card .q-btn,
+body[data-theme="twilight_relic"] .hrp-nav-card .q-icon,
+body[data-theme="midnight_arcade"] .hrp-nav-card .q-icon,
+body[data-theme="twilight_relic"] .hrp-nav-card .q-checkbox__label,
+body[data-theme="midnight_arcade"] .hrp-nav-card .q-checkbox__label,
+body[data-theme="twilight_relic"] .hrp-nav-card .q-btn__content,
+body[data-theme="midnight_arcade"] .hrp-nav-card .q-btn__content {
+    color: var(--owl-text-soft) !important;
+}
+
+body[data-theme="twilight_relic"] .hrp-nav-card .q-btn[aria-pressed="true"],
+body[data-theme="midnight_arcade"] .hrp-nav-card .q-btn[aria-pressed="true"],
+body[data-theme="twilight_relic"] .hrp-nav-card .q-btn[aria-pressed="true"] .q-btn__content,
+body[data-theme="midnight_arcade"] .hrp-nav-card .q-btn[aria-pressed="true"] .q-btn__content {
+    color: #ffffff !important;
+}
+
 /* Map legacy inline colors to the new theme palette */
 [style*="color: #0A2540"], [style*="color:#0A2540"], [style*="color: #0a2540"], [style*="color:#0a2540"] { color: var(--owl-text) !important; }
 [style*="color: #64748b"], [style*="color:#64748b"], [style*="color: #64748B"], [style*="color:#64748B"] { color: var(--owl-muted) !important; }
@@ -1654,7 +1680,7 @@ def main_page():
                         ui.label(lbl).classes("text-xs").style("color: #64748b;")
 
             with ui.element("div").props('id="hrp-scroll-container"').classes("w-full overflow-x-auto rounded-xl hrp-matrix-shell").style(
-                "background: #ffffff; box-shadow: 0 2px 8px rgba(10,37,64,0.06);"
+                "background: transparent; box-shadow: none;"
             ):
                 with ui.element("table").classes("w-full border-collapse text-xs"):
                     with ui.element("thead"):
@@ -1678,14 +1704,14 @@ def main_page():
                             rec_label = "Täglich" if is_daily else (", ".join(WEEKDAY_MAP[dd] for dd in rec_days) if rec_days else "")
 
                             with ui.element("tr").props(f'data-task-id="{task.id}"').classes("cursor-move"):
-                                with ui.element("td").classes("p-2 sticky left-0 z-10 border-b border-gray-200 hrp-matrix-task-col"):
+                                with ui.element("td").classes("p-2 sticky left-0 z-10 hrp-matrix-task-col"):
                                     with ui.row().classes("items-center gap-2 no-wrap"):
                                         if is_admin:
                                             ui.icon("drag_indicator", size="16px", color="grey").classes("drag-handle cursor-grab")
                                         ui.icon("auto_awesome", size="16px").style("color: #00C2D1;")
                                         with ui.column().classes("gap-0"):
                                             with ui.row().classes("items-center gap-1"):
-                                                ui.label(task.title).classes("font-bold text-sm").style("color: #0A2540;")
+                                                ui.label(task.title).classes("font-bold text-sm hrp-matrix-task-title")
                                                 if task.description:
                                                     ui.tooltip(task.description)
                                                 if is_admin:
@@ -1705,7 +1731,7 @@ def main_page():
                                     if is_today:
                                         cell_bg += " box-shadow: inset 0 0 0 2px rgba(0,194,209,0.4);"
 
-                                    with ui.element("td").classes("p-1 text-center align-top border-b border-gray-100 hrp-matrix-cell").style(cell_bg):
+                                    with ui.element("td").classes("p-1 text-center align-top hrp-matrix-cell").style(cell_bg):
                                         _build_cell(task, d, inst, users_all, status)
 
             if is_admin:
