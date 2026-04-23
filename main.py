@@ -667,6 +667,37 @@ body[data-theme="midnight_arcade"] .q-field--outlined .q-field__control {
     letter-spacing: 0.08em;
 }
 
+.hrp-date-range {
+    font-family: 'Exo 2', sans-serif !important;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--owl-text) !important;
+}
+
+.hrp-stat-heading {
+    font-family: 'Orbitron', sans-serif !important;
+    color: var(--owl-text) !important;
+}
+
+.hrp-stat-value {
+    font-family: 'Exo 2', sans-serif !important;
+    font-weight: 700;
+    color: var(--owl-text) !important;
+}
+
+.hrp-stat-label {
+    color: var(--owl-text-soft) !important;
+}
+
+.hrp-matrix-task-col {
+    background: var(--owl-surface-soft) !important;
+}
+
+body[data-theme="twilight_relic"] .hrp-matrix-task-col,
+body[data-theme="midnight_arcade"] .hrp-matrix-task-col {
+    background: linear-gradient(180deg, var(--owl-strong-surface) 0%, var(--owl-surface) 100%) !important;
+}
+
 /* Map legacy inline colors to the new theme palette */
 [style*="color: #0A2540"], [style*="color:#0A2540"], [style*="color: #0a2540"], [style*="color:#0a2540"] { color: var(--owl-text) !important; }
 [style*="color: #64748b"], [style*="color:#64748b"], [style*="color: #64748B"], [style*="color:#64748B"] { color: var(--owl-muted) !important; }
@@ -1016,7 +1047,7 @@ def main_page():
                 rebuild()
 
             ui.button(icon="chevron_left", on_click=_prev).props("flat round dense").style("color: #0A2540;")
-            date_label = ui.label("").classes("text-subtitle1 font-bold min-w-[200px] text-center").style("color: #0A2540;")
+            date_label = ui.label("").classes("text-subtitle1 min-w-[200px] text-center hrp-date-range")
             ui.button(icon="chevron_right", on_click=_next).props("flat round dense").style("color: #0A2540;")
 
             ui.separator().props("vertical").classes("h-6")
@@ -1647,7 +1678,7 @@ def main_page():
                             rec_label = "Täglich" if is_daily else (", ".join(WEEKDAY_MAP[dd] for dd in rec_days) if rec_days else "")
 
                             with ui.element("tr").props(f'data-task-id="{task.id}"').classes("cursor-move"):
-                                with ui.element("td").classes("p-2 sticky left-0 z-10 border-b border-gray-200").style("background: #f8fafc;"):
+                                with ui.element("td").classes("p-2 sticky left-0 z-10 border-b border-gray-200 hrp-matrix-task-col"):
                                     with ui.row().classes("items-center gap-2 no-wrap"):
                                         if is_admin:
                                             ui.icon("drag_indicator", size="16px", color="grey").classes("drag-handle cursor-grab")
@@ -2191,7 +2222,7 @@ def main_page():
         with stats_container:
             with ui.row().classes("items-center gap-2 mt-2 mb-3"):
                 ui.icon("bar_chart", size="28px").style("color: #00C2D1;")
-                ui.label("Statistik").classes("text-h6 font-bold").style("color: #0A2540; font-family: Outfit, sans-serif;")
+                ui.label("Statistik").classes("text-h6 font-bold hrp-stat-heading")
 
             total_all = 0.0
             with ui.row().classes("w-full gap-3 flex-wrap mb-4"):
@@ -2207,23 +2238,23 @@ def main_page():
                     with ui.card().classes("hrp-stat-card flex-1 min-w-[200px]").style(f"border-top: 3px solid {border_color};"):
                         with ui.row().classes("items-center gap-2 mb-2"):
                             ui.html(f'<span class="hrp-user-chip" style="background:{color}">{u.username[:2].upper()}</span>')
-                            ui.label(u.username).classes("font-bold").style("color: #0A2540;")
+                            ui.label(u.username).classes("font-bold hrp-stat-value")
                         with ui.row().classes("gap-4 flex-wrap"):
                             with ui.column().classes("gap-0"):
-                                ui.label("Geplant").classes("text-[10px] uppercase").style("color: #64748b;")
-                                ui.label(f"{total:.0f} min").classes("text-lg font-bold").style("color: #0A2540;")
+                                ui.label("Geplant").classes("text-[10px] uppercase hrp-stat-label")
+                                ui.label(f"{total:.0f} min").classes("text-lg font-bold hrp-stat-value")
                             with ui.column().classes("gap-0"):
-                                ui.label("Ø/Tag").classes("text-[10px] uppercase").style("color: #64748b;")
-                                ui.label(f"{avg_per_day:.0f} min").classes("text-lg font-bold").style("color: #0A2540;")
+                                ui.label("Ø/Tag").classes("text-[10px] uppercase hrp-stat-label")
+                                ui.label(f"{avg_per_day:.0f} min").classes("text-lg font-bold hrp-stat-value")
                             with ui.column().classes("gap-0"):
-                                ui.label("Auslastung").classes("text-[10px] uppercase").style("color: #64748b;")
+                                ui.label("Auslastung").classes("text-[10px] uppercase hrp-stat-label")
                                 util_color = "#ef4444" if utilization > 100 else ("#f59e0b" if utilization > 80 else "#10b981")
                                 ui.label(f"{utilization:.0f}%").classes("text-lg font-bold").style(f"color: {util_color};")
 
             with ui.card().classes("w-full hrp-stat-card px-4 py-3").style("border-left: 3px solid #00C2D1;"):
                 with ui.row().classes("items-center gap-2"):
                     ui.icon("functions", size="20px").style("color: #00C2D1;")
-                    ui.label(f"Gesamttotal: {total_all:.0f} Minuten im Zeitraum").classes("font-bold").style("color: #0A2540;")
+                    ui.label(f"Gesamttotal: {total_all:.0f} Minuten im Zeitraum").classes("font-bold hrp-stat-value")
 
             if is_admin and resource_users:
                 with ui.expansion("Tagesdetails anzeigen", icon="table_chart").classes("w-full mt-3").props("dense"):
