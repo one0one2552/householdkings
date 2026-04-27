@@ -379,11 +379,11 @@ def _cell_status(inst: TaskInstance | None, d: date) -> str:
 
 
 CELL_STYLES = {
-    "completed":  ("#22c55e", "rgba(34,197,94,0.26)",   "#22c55e"),
-    "assigned":   ("#38bdf8", "rgba(56,189,248,0.28)",  "#38bdf8"),
-    "unassigned": ("#ffb703", "rgba(255,183,3,0.28)",   "#ffb703"),
-    "overdue":    ("#ff4d6d", "rgba(255,77,109,0.24)",  "#ff4d6d"),
-    "inactive":   ("#94a3b8", "rgba(148,163,184,0.18)", "#94a3b8"),
+    "completed":  ("#10b981", "rgba(16,185,129,0.22)",  "#10b981"),
+    "assigned":   ("#6366f1", "rgba(99,102,241,0.22)",   "#6366f1"),
+    "unassigned": ("#f59e0b", "rgba(245,158,11,0.22)",   "#f59e0b"),
+    "overdue":    ("#ef4444", "rgba(239,68,68,0.22)",    "#ef4444"),
+    "inactive":   ("#94a3b8", "rgba(148,163,184,0.12)",  "#94a3b8"),
 }
 
 THEME_OPTIONS = {
@@ -423,90 +423,104 @@ def _is_dark_theme(theme: str) -> bool:
 
 CUSTOM_CSS = """
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
+/* bling.home – design system v2
+   Adventure-View module hook: body[data-view="adventure"] { ... }
+   To enable: ui.run_javascript("document.body.setAttribute('data-view','adventure')")
+*/
 :root {
-    --owl-bg: #fff8dd;
-    --owl-bg-alt: #ffe6a7;
-    --owl-surface: #fffdf3;
-    --owl-surface-soft: #fff0bf;
-    --owl-strong-surface: #18486d;
-    --owl-text: #16324f;
-    --owl-text-soft: #2d4f73;
-    --owl-muted: #537091;
-    --owl-structure: #7aa4c0;
-    --owl-accent: #ff9f1c;
-    --owl-accent-2: #26c6da;
-    --owl-accent-soft: rgba(255,159,28,0.28);
-    --owl-accent-strong: #ff7d00;
-    --owl-shadow: 0 18px 42px rgba(255, 159, 28, 0.18);
-    --owl-border: rgba(24, 72, 109, 0.18);
-    --owl-header-bg: rgba(255, 251, 232, 0.84);
-    --owl-header-text: #16324f;
+    /* Sunforge (default light) */
+    --owl-bg: #f5f0ff;
+    --owl-bg-alt: #ede5ff;
+    --owl-surface: #ffffff;
+    --owl-surface-soft: #f3eeff;
+    --owl-strong-surface: #3b1fa8;
+    --owl-text: #1a1235;
+    --owl-text-soft: #3d2f72;
+    --owl-muted: #7c6faa;
+    --owl-structure: #a78bfa;
+    --owl-accent: #7c3aed;
+    --owl-accent-2: #ec4899;
+    --owl-accent-soft: rgba(124,58,237,0.15);
+    --owl-accent-strong: #5b21b6;
+    --owl-shadow: 0 16px 48px rgba(124, 58, 237, 0.18);
+    --owl-border: rgba(124,58,237,0.14);
+    --owl-header-bg: rgba(245,240,255,0.90);
+    --owl-header-text: #1a1235;
     --owl-text-on-accent: #ffffff;
+    /* Status colors */
+    --bh-open: #f59e0b;
+    --bh-open-bg: rgba(245,158,11,0.18);
+    --bh-done: #10b981;
+    --bh-done-bg: rgba(16,185,129,0.18);
+    --bh-overdue: #ef4444;
+    --bh-overdue-bg: rgba(239,68,68,0.18);
+    --bh-assigned: #6366f1;
+    --bh-assigned-bg: rgba(99,102,241,0.18);
 }
 
 body[data-theme="forest_circuit"] {
-    --owl-bg: #efffe8;
-    --owl-bg-alt: #ccffd8;
-    --owl-surface: #fbfff9;
-    --owl-surface-soft: #ddffe8;
-    --owl-strong-surface: #1d5b48;
-    --owl-text: #173b34;
-    --owl-text-soft: #225146;
-    --owl-muted: #44766a;
-    --owl-structure: #6ac3a5;
-    --owl-accent: #1dd1a1;
-    --owl-accent-2: #7c4dff;
-    --owl-accent-soft: rgba(29,209,161,0.24);
-    --owl-accent-strong: #00b986;
-    --owl-shadow: 0 18px 44px rgba(29, 209, 161, 0.18);
-    --owl-border: rgba(29, 91, 72, 0.18);
-    --owl-header-bg: rgba(241, 255, 237, 0.84);
-    --owl-header-text: #173b34;
+    --owl-bg: #f0fdf4;
+    --owl-bg-alt: #dcfce7;
+    --owl-surface: #ffffff;
+    --owl-surface-soft: #ecfdf5;
+    --owl-strong-surface: #065f46;
+    --owl-text: #064e3b;
+    --owl-text-soft: #065f46;
+    --owl-muted: #059669;
+    --owl-structure: #34d399;
+    --owl-accent: #10b981;
+    --owl-accent-2: #6366f1;
+    --owl-accent-soft: rgba(16,185,129,0.16);
+    --owl-accent-strong: #059669;
+    --owl-shadow: 0 16px 44px rgba(16, 185, 129, 0.18);
+    --owl-border: rgba(16, 185, 129, 0.14);
+    --owl-header-bg: rgba(240,253,244,0.92);
+    --owl-header-text: #064e3b;
     --owl-text-on-accent: #ffffff;
 }
 
 body[data-theme="twilight_relic"] {
-    --owl-bg: #1a1230;
-    --owl-bg-alt: #302058;
-    --owl-surface: #271b49;
-    --owl-surface-soft: #32235d;
-    --owl-strong-surface: #47327a;
-    --owl-text: #eceaf3;
-    --owl-text-soft: #ddd9ea;
-    --owl-muted: #d7c7ff;
-    --owl-structure: #9be7ff;
-    --owl-accent: #00e5ff;
-    --owl-accent-2: #ffca28;
-    --owl-accent-soft: rgba(0,229,255,0.26);
-    --owl-accent-strong: #7c4dff;
-    --owl-shadow: 0 20px 58px rgba(0, 0, 0, 0.42);
-    --owl-border: rgba(155, 231, 255, 0.26);
-    --owl-header-bg: rgba(26, 18, 48, 0.8);
-    --owl-header-text: #eceaf3;
-    --owl-text-on-accent: #131122;
+    --owl-bg: #0f0a1e;
+    --owl-bg-alt: #1a1235;
+    --owl-surface: #1e1535;
+    --owl-surface-soft: #2a1f4e;
+    --owl-strong-surface: #3b1fa8;
+    --owl-text: #ede9fd;
+    --owl-text-soft: #c4b5fd;
+    --owl-muted: #a78bfa;
+    --owl-structure: #818cf8;
+    --owl-accent: #a78bfa;
+    --owl-accent-2: #f472b6;
+    --owl-accent-soft: rgba(167,139,250,0.20);
+    --owl-accent-strong: #7c3aed;
+    --owl-shadow: 0 20px 58px rgba(0, 0, 0, 0.48);
+    --owl-border: rgba(167,139,250,0.22);
+    --owl-header-bg: rgba(15,10,30,0.88);
+    --owl-header-text: #ede9fd;
+    --owl-text-on-accent: #ffffff;
 }
 
 body[data-theme="midnight_arcade"] {
-    --owl-bg: #08121f;
-    --owl-bg-alt: #10253d;
-    --owl-surface: #132235;
-    --owl-surface-soft: #17314c;
-    --owl-strong-surface: #21476b;
-    --owl-text: #e6edf2;
-    --owl-text-soft: #d3dfe8;
-    --owl-muted: #abd8ec;
-    --owl-structure: #67f5ff;
-    --owl-accent: #ff5fd2;
-    --owl-accent-2: #00f5ff;
-    --owl-accent-soft: rgba(255,95,210,0.26);
-    --owl-accent-strong: #8b5cf6;
-    --owl-shadow: 0 20px 62px rgba(0, 0, 0, 0.48);
-    --owl-border: rgba(103, 245, 255, 0.24);
-    --owl-header-bg: rgba(8, 18, 31, 0.8);
-    --owl-header-text: #e6edf2;
-    --owl-text-on-accent: #160d21;
+    --owl-bg: #0a0a0f;
+    --owl-bg-alt: #111128;
+    --owl-surface: #13131f;
+    --owl-surface-soft: #1c1c32;
+    --owl-strong-surface: #1e1b4b;
+    --owl-text: #e2e8f0;
+    --owl-text-soft: #c7d2fe;
+    --owl-muted: #818cf8;
+    --owl-structure: #6366f1;
+    --owl-accent: #f472b6;
+    --owl-accent-2: #38bdf8;
+    --owl-accent-soft: rgba(244,114,182,0.20);
+    --owl-accent-strong: #ec4899;
+    --owl-shadow: 0 20px 62px rgba(0, 0, 0, 0.56);
+    --owl-border: rgba(99,102,241,0.22);
+    --owl-header-bg: rgba(10,10,15,0.90);
+    --owl-header-text: #e2e8f0;
+    --owl-text-on-accent: #ffffff;
 }
 
 body[data-theme="twilight_relic"],
@@ -516,11 +530,11 @@ body[data-theme="midnight_arcade"] {
 
 body, .q-page {
     background:
-        radial-gradient(circle at 12% 14%, var(--owl-accent-soft), transparent 26%),
-        radial-gradient(circle at 88% 10%, color-mix(in srgb, var(--owl-accent-2) 18%, transparent), transparent 24%),
+        radial-gradient(circle at 10% 12%, var(--owl-accent-soft), transparent 30%),
+        radial-gradient(circle at 90% 8%, color-mix(in srgb, var(--owl-accent-2) 12%, transparent), transparent 28%),
         linear-gradient(135deg, var(--owl-bg) 0%, var(--owl-bg-alt) 100%),
         var(--owl-bg) !important;
-    font-family: 'Exo 2', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
     color: var(--owl-text) !important;
 }
 
@@ -530,24 +544,23 @@ body::before {
     inset: 0;
     pointer-events: none;
     background:
-        linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px);
-    background-size: 32px 32px;
-    opacity: 0.12;
-    mask-image: radial-gradient(circle at center, black 48%, transparent 100%);
+        radial-gradient(ellipse at 20% 80%, color-mix(in srgb, var(--owl-accent) 6%, transparent) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, color-mix(in srgb, var(--owl-accent-2) 6%, transparent) 0%, transparent 60%);
+    z-index: 0;
 }
 
 .text-h5, .text-h6, .text-subtitle1, .text-subtitle2, h1, h2, h3 {
-    font-family: 'Orbitron', sans-serif !important;
-    letter-spacing: 0.06em;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    letter-spacing: -0.02em;
 }
 
 .q-header {
     background: var(--owl-header-bg) !important;
     color: var(--owl-header-text) !important;
-    backdrop-filter: blur(14px);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
     border-bottom: 1px solid var(--owl-border);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12) !important;
+    box-shadow: 0 1px 0 var(--owl-border), 0 4px 24px rgba(0,0,0,0.06) !important;
 }
 
 .q-card {
@@ -620,9 +633,15 @@ body[data-theme="midnight_arcade"] .q-field--outlined .q-field__control {
 }
 
 .q-btn {
-    border-radius: 16px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
+    border-radius: 12px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif !important;
+    letter-spacing: 0.01em;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.q-btn:hover {
+    transform: translateY(-1px);
 }
 
 .q-btn--flat {
@@ -632,19 +651,37 @@ body[data-theme="midnight_arcade"] .q-field--outlined .q-field__control {
 .q-btn--unelevated {
     background: linear-gradient(135deg, var(--owl-accent) 0%, var(--owl-accent-strong) 100%) !important;
     color: var(--owl-text-on-accent) !important;
-    box-shadow: 0 10px 24px color-mix(in srgb, var(--owl-accent) 40%, transparent);
+    box-shadow: 0 6px 20px color-mix(in srgb, var(--owl-accent) 38%, transparent);
+}
+
+.q-btn--unelevated:hover {
+    box-shadow: 0 10px 28px color-mix(in srgb, var(--owl-accent) 52%, transparent);
 }
 
 .hrp-matrix-cell {
     min-width: 110px;
-    min-height: 60px;
-    transition: background 0.18s, transform 0.18s, box-shadow 0.18s;
-    border-radius: 14px;
+    min-height: 62px;
+    transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+    border-radius: 10px;
+    padding: 4px !important;
 }
 
 .hrp-matrix-cell:hover {
-    transform: translateY(-1px) scale(1.02);
-    box-shadow: 0 10px 22px rgba(0,0,0,0.12);
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.14);
+    filter: brightness(1.06);
+    z-index: 2;
+    position: relative;
+}
+
+/* Overdue glow pulse */
+.hrp-matrix-cell[data-status="overdue"] {
+    animation: bhOverduePulse 2.4s ease-in-out infinite;
+}
+
+@keyframes bhOverduePulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+    50% { box-shadow: 0 0 0 3px rgba(239,68,68,0.30); }
 }
 
 .hrp-card {
@@ -714,48 +751,44 @@ body[data-theme="midnight_arcade"] .q-field--outlined .q-field__control {
 }
 
 .hrp-table th {
-    font-family: 'Rajdhani', sans-serif !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
 }
 
 .hrp-wordmark {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 22px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 20px;
     font-weight: 800;
-    letter-spacing: 0.18em;
+    letter-spacing: -0.03em;
     color: var(--owl-text);
-    text-shadow: 0 0 18px color-mix(in srgb, var(--owl-accent) 32%, transparent);
+    line-height: 1;
+}
+
+.hrp-wordmark span {
+    color: var(--owl-accent);
 }
 
 .hrp-submark {
-    font-family: 'Exo 2', sans-serif;
-    font-size: 11px;
-    letter-spacing: 0.2em;
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--owl-muted);
+    line-height: 1;
 }
 
 .hrp-crest {
-    width: 48px;
-    height: 48px;
-    border-radius: 16px;
-    position: relative;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: linear-gradient(135deg, var(--owl-accent) 0%, var(--owl-accent-2) 100%);
-    box-shadow: 0 12px 24px color-mix(in srgb, var(--owl-accent) 34%, transparent);
-    border: 2px solid color-mix(in srgb, white 46%, var(--owl-accent-2));
-}
-
-.hrp-crest::before,
-.hrp-crest::after {
-    content: "";
-    position: absolute;
-    inset: 12px;
-    clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
-    background: rgba(255,255,255,0.88);
-}
-
-.hrp-crest::after {
-    inset: 19px 15px 9px;
-    background: var(--owl-strong-surface);
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--owl-accent) 40%, transparent);
+    font-size: 20px;
+    line-height: 1;
+    flex-shrink: 0;
 }
 
 .hrp-login-shell {
@@ -786,52 +819,64 @@ body[data-theme="midnight_arcade"] .q-field--outlined .q-field__control {
 }
 
 .hrp-panel-title {
-    font-family: 'Orbitron', sans-serif !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    font-weight: 700;
     color: var(--owl-text) !important;
 }
 
 .hrp-quest-subtitle {
     color: var(--owl-muted) !important;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.02em;
 }
 
 .hrp-date-range {
-    font-family: 'Exo 2', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
     font-weight: 700;
-    letter-spacing: 0.04em;
+    letter-spacing: -0.01em;
     color: var(--owl-text) !important;
 }
 
 .hrp-stat-heading {
-    font-family: 'Orbitron', sans-serif !important;
-    color: var(--owl-text) !important;
-}
-
-.hrp-stat-value {
-    font-family: 'Exo 2', sans-serif !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
     font-weight: 700;
     color: var(--owl-text) !important;
 }
 
+.hrp-stat-value {
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 800;
+    color: var(--owl-text) !important;
+    letter-spacing: -0.02em;
+}
+
 .hrp-stat-label {
-    color: var(--owl-text-soft) !important;
+    color: var(--owl-muted) !important;
+    font-size: 11px;
 }
 
 .hrp-matrix-task-col {
-    background: var(--owl-surface-soft) !important;
+    background: var(--owl-surface) !important;
+    border-right: 1px solid var(--owl-border);
+    box-shadow: 2px 0 12px rgba(0,0,0,0.06);
 }
 
 body[data-theme="twilight_relic"] .hrp-matrix-task-col,
 body[data-theme="midnight_arcade"] .hrp-matrix-task-col {
-    background: linear-gradient(180deg, var(--owl-strong-surface) 0%, var(--owl-surface) 100%) !important;
+    background: var(--owl-surface-soft) !important;
+    box-shadow: 2px 0 16px rgba(0,0,0,0.22);
 }
 
 .hrp-matrix-task-title {
     color: var(--owl-text) !important;
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 600;
+    font-size: 13px !important;
+    line-height: 1.3;
 }
 
 .hrp-matrix-task-meta {
-    color: var(--owl-text-soft) !important;
+    color: var(--owl-muted) !important;
+    font-size: 11px;
 }
 
 body[data-theme="twilight_relic"] .hrp-nav-card .q-btn,
@@ -874,6 +919,59 @@ body[data-theme="midnight_arcade"] [style*="color: #94a3b8"],
 body[data-theme="midnight_arcade"] [style*="color:#94a3b8"] {
     color: var(--owl-text-soft) !important;
 }
+
+/* Dark theme: fix all dialogs and cards with hardcoded colors */
+body[data-theme="twilight_relic"] .q-dialog .q-card,
+body[data-theme="midnight_arcade"] .q-dialog .q-card {
+    background: var(--owl-surface) !important;
+    border: 1px solid var(--owl-border);
+}
+
+body[data-theme="twilight_relic"] .q-dialog .q-card [style*="#0A2540"],
+body[data-theme="midnight_arcade"] .q-dialog .q-card [style*="#0A2540"],
+body[data-theme="twilight_relic"] .q-dialog .q-card [style*="#0a2540"],
+body[data-theme="midnight_arcade"] .q-dialog .q-card [style*="#0a2540"] {
+    color: var(--owl-text) !important;
+}
+
+body[data-theme="twilight_relic"] .q-dialog .q-card [style*="#64748b"],
+body[data-theme="midnight_arcade"] .q-dialog .q-card [style*="#64748b"],
+body[data-theme="twilight_relic"] .q-dialog .q-card [style*="#64748B"],
+body[data-theme="midnight_arcade"] .q-dialog .q-card [style*="#64748B"] {
+    color: var(--owl-muted) !important;
+}
+
+body[data-theme="twilight_relic"] .q-dialog .q-card [style*="background: #f8fafc"],
+body[data-theme="midnight_arcade"] .q-dialog .q-card [style*="background: #f8fafc"],
+body[data-theme="twilight_relic"] .q-dialog .q-card [style*="background: #ffffff"],
+body[data-theme="midnight_arcade"] .q-dialog .q-card [style*="background: #ffffff"] {
+    background: var(--owl-surface-soft) !important;
+}
+
+/* Also fix the nav card, user management cards, and any remaining hardcoded backgrounds */
+body[data-theme="twilight_relic"] .hrp-nav-card,
+body[data-theme="midnight_arcade"] .hrp-nav-card {
+    background: var(--owl-surface) !important;
+    border-color: var(--owl-border) !important;
+}
+
+/* Assign username labels in dark theme */
+body[data-theme="twilight_relic"] [style*="color: #0A2540"],
+body[data-theme="midnight_arcade"] [style*="color: #0A2540"],
+body[data-theme="twilight_relic"] [style*="color: #0a2540"],
+body[data-theme="midnight_arcade"] [style*="color: #0a2540"] {
+    color: var(--owl-text) !important;
+}
+
+body[data-theme="twilight_relic"] [style*="background: #f8fafc"],
+body[data-theme="midnight_arcade"] [style*="background: #f8fafc"] {
+    background: var(--owl-surface-soft) !important;
+}
+
+body[data-theme="twilight_relic"] [style*="background: #ffffff"],
+body[data-theme="midnight_arcade"] [style*="background: #ffffff"] {
+    background: var(--owl-surface) !important;
+}
 </style>
 """
 
@@ -913,8 +1011,10 @@ COMPLETION_EFFECT_ASSETS = """
     max-width: 240px;
 }
 .hrp-matrix-shell {
-    border-radius: 24px;
+    border-radius: 20px;
     overflow-y: hidden;
+    background: color-mix(in srgb, var(--owl-bg) 60%, var(--owl-surface)) !important;
+    padding: 4px;
 }
 body[data-theme="twilight_relic"] .hrp-nav-card,
 body[data-theme="midnight_arcade"] .hrp-nav-card,
@@ -1058,16 +1158,16 @@ def login_page():
     ):
         with ui.row().classes("w-full items-center justify-between mb-2"):
             with ui.row().classes("items-center gap-2"):
-                ui.html('<div class="hrp-crest"></div>')
+                ui.html('<div class="hrp-crest">💎</div>')
                 with ui.column().classes("gap-0"):
-                    ui.label("O.W.L.").classes("hrp-wordmark")
-                    ui.label("Quest Grid").classes("hrp-submark")
+                    ui.html('<div class="hrp-wordmark">bling<span>.</span>home</div>')
+                    ui.label("Haushaltsplaner").classes("hrp-submark")
             theme_select = ui.select(THEME_OPTIONS, value=theme_key, label="Theme", on_change=lambda e: set_theme(e.value)).props("outlined dense options-dense").classes("hrp-theme-select")
 
         with ui.column().classes("w-full items-center gap-2 py-3"):
-            ui.label("Household Quest Board").classes("text-h5 font-bold hrp-panel-title")
-            ui.label("Level up chores, streaks and team wins.").classes("text-caption mb-1 hrp-quest-subtitle")
-            ui.label("Fantasy-tech vibes, but still practical.").classes("text-caption mb-2 hrp-quest-subtitle")
+            ui.label("Willkommen zurück").classes("text-h5 font-bold hrp-panel-title")
+            ui.label("Dein Haushaltsplaner.").classes("text-caption mb-1 hrp-quest-subtitle")
+            ui.label("Aufgaben organisiert. Familie koordiniert.").classes("text-caption mb-2 hrp-quest-subtitle")
 
         username_input = ui.input("Benutzername").props("outlined rounded").classes("w-full")
         password_input = ui.input("Passwort", password=True, password_toggle_button=True).props("outlined rounded").classes("w-full")
@@ -1157,10 +1257,10 @@ def main_page():
     # --------------- Header ---------------
     with ui.header().classes("items-center justify-between px-6 py-3").style("position: relative !important;"):
         with ui.row().classes("items-center gap-3"):
-            ui.html('<div class="hrp-crest"></div>')
+            ui.html('<div class="hrp-crest">💎</div>')
             with ui.column().classes("gap-0"):
-                ui.label("O.W.L.").classes("hrp-wordmark")
-                ui.label("Household Quest Board").classes("hrp-submark")
+                ui.html('<div class="hrp-wordmark">bling<span>.</span>home</div>')
+                ui.label("Haushaltsplaner").classes("hrp-submark")
         with ui.row().classes("items-center gap-3"):
             ui.icon("person", size="20px").style("color: var(--owl-accent);")
             ui.label(user.username).classes("text-sm font-medium").style("color: var(--owl-text);")
@@ -1185,7 +1285,7 @@ def main_page():
     _custom_row_holder: list = [None]
 
     with ui.card().classes("w-full rounded-xl mx-4 mt-3 px-4 py-3 hrp-nav-card").style(
-        "background: #ffffff; box-shadow: 0 2px 8px rgba(10,37,64,0.08); border-bottom: 2px solid rgba(0,229,255,0.4); position: sticky; top: 0; z-index: 100;"
+        "background: var(--owl-surface); box-shadow: 0 2px 8px var(--owl-border); border-bottom: 1px solid var(--owl-border); position: sticky; top: 0; z-index: 100;"
     ):
         with ui.row().classes("w-full items-center justify-center gap-4 flex-wrap"):
             def _prev():
@@ -1200,9 +1300,9 @@ def main_page():
                     state["ref_date"] += delta
                 rebuild()
 
-            ui.button(icon="chevron_left", on_click=_prev).props("flat round dense").style("color: #0A2540;")
+            ui.button(icon="chevron_left", on_click=_prev).props("flat round dense").style("color: var(--owl-text);")
             date_label = ui.label("").classes("text-subtitle1 min-w-[200px] text-center hrp-date-range")
-            ui.button(icon="chevron_right", on_click=_next).props("flat round dense").style("color: #0A2540;")
+            ui.button(icon="chevron_right", on_click=_next).props("flat round dense").style("color: var(--owl-text);")
 
             ui.separator().props("vertical").classes("h-6")
 
@@ -1216,12 +1316,12 @@ def main_page():
                 {"week": "1 Woche", "2weeks": "2 Wochen", "month": "Monat", "custom": "Benutzerdefiniert"},
                 value="week",
                 on_change=lambda e: toggle_view(e.value),
-            ).props("rounded dense no-caps").style("color: #0A2540;")
+            ).props("rounded dense no-caps").style("color: var(--owl-text);")
 
             def toggle_start_today(e):
                 state["start_today"] = e.value
                 rebuild()
-            ui.checkbox("Ab Heute", value=False, on_change=toggle_start_today).style("color: #0A2540; font-size: 13px;")
+            ui.checkbox("Ab Heute", value=False, on_change=toggle_start_today).style("color: var(--owl-text); font-size: 13px;")
 
             ui.separator().props("vertical").classes("h-6")
 
@@ -1233,20 +1333,20 @@ def main_page():
                 {"matrix": "Matrix", "list": "Liste", "day": "Heute"},
                 value="matrix",
                 on_change=lambda e: toggle_display(e.value),
-            ).props("rounded dense no-caps").style("color: #0A2540;")
+            ).props("rounded dense no-caps").style("color: var(--owl-text);")
 
             def go_today():
                 state["ref_date"] = date.today()
                 rebuild()
-            ui.button("Heute", icon="today", on_click=go_today).props("flat rounded dense no-caps").style("color: #0A2540;")
+            ui.button("Heute", icon="today", on_click=go_today).props("flat rounded dense no-caps").style("color: var(--owl-text);")
 
         custom_row = ui.row().classes("w-full justify-center gap-3 items-center mt-1 pb-1")
         _custom_row_holder[0] = custom_row
         custom_row.set_visibility(False)
         with custom_row:
-            ui.label("Von:").classes("text-sm font-medium").style("color: #0A2540;")
+            ui.label("Von:").classes("text-sm font-medium").style("color: var(--owl-text);")
             cs_input = ui.input(value=state["custom_start"].isoformat()).props("outlined rounded dense type=date")
-            ui.label("Bis:").classes("text-sm font-medium").style("color: #0A2540;")
+            ui.label("Bis:").classes("text-sm font-medium").style("color: var(--owl-text);")
             ce_input = ui.input(value=state["custom_end"].isoformat()).props("outlined rounded dense type=date")
             def apply_custom():
                 try:
@@ -2216,13 +2316,13 @@ def main_page():
         with matrix_container:
             if is_admin:
                 with ui.row().classes("gap-2 mb-3"):
-                    ui.button("Aufgabe erstellen", on_click=_open_add_task_dialog, icon="add_task").props("rounded unelevated no-caps").style("background: #00C2D1; color: white;")
-                    ui.button("Tags", on_click=_open_manage_tags_dialog, icon="label").props("rounded flat no-caps").style("color: #0A2540;")
-                    ui.button("Benutzer", on_click=_open_manage_users_dialog, icon="group").props("rounded flat no-caps").style("color: #0A2540;")
+                    ui.button("Aufgabe erstellen", on_click=_open_add_task_dialog, icon="add_task").props("rounded unelevated no-caps").style("background: linear-gradient(135deg, var(--owl-accent), var(--owl-accent-strong)); color: white;")
+                    ui.button("Tags", on_click=_open_manage_tags_dialog, icon="label").props("rounded flat no-caps").style("color: var(--owl-text);")
+                    ui.button("Benutzer", on_click=_open_manage_users_dialog, icon="group").props("rounded flat no-caps").style("color: var(--owl-text);")
                     ui.separator().props("vertical").classes("h-6")
-                    ui.button("Preset speichern", on_click=_open_save_preset_dialog, icon="bookmark_add").props("rounded flat no-caps").style("color: #0A2540;")
-                    ui.button("Preset anwenden", on_click=_open_apply_preset_dialog, icon="bookmark").props("rounded flat no-caps").style("color: #0A2540;")
-                    ui.button("Presets", on_click=_open_manage_presets_dialog, icon="bookmarks").props("rounded flat no-caps").style("color: #0A2540;")
+                    ui.button("Preset speichern", on_click=_open_save_preset_dialog, icon="bookmark_add").props("rounded flat no-caps").style("color: var(--owl-text);")
+                    ui.button("Preset anwenden", on_click=_open_apply_preset_dialog, icon="bookmark").props("rounded flat no-caps").style("color: var(--owl-text);")
+                    ui.button("Presets", on_click=_open_manage_presets_dialog, icon="bookmarks").props("rounded flat no-caps").style("color: var(--owl-text);")
 
             if not tasks:
                 with ui.card().classes("w-full rounded-xl py-12").style("background: #ffffff; box-shadow: 0 2px 8px rgba(10,37,64,0.06);"):
@@ -2245,20 +2345,20 @@ def main_page():
             with ui.element("div").props('id="hrp-scroll-container"').classes("w-full overflow-x-auto rounded-xl hrp-matrix-shell").style(
                 "background: transparent; box-shadow: none;"
             ):
-                with ui.element("table").classes("w-full border-collapse text-xs"):
+                with ui.element("table").classes("w-full text-xs").style("border-collapse: separate; border-spacing: 2px 3px;"):
                     with ui.element("thead"):
                         with ui.element("tr"):
-                            with ui.element("th").classes("p-2 text-left font-bold sticky left-0 z-10 min-w-[220px]").style("background: #0A2540;"):
-                                ui.label("Aufgabe").style("color: #00E5FF; font-family: Outfit, sans-serif;")
+                            with ui.element("th").classes("p-2 text-left font-bold sticky left-0 z-10 min-w-[220px]").style("background: var(--owl-strong-surface); border-radius: 8px 0 0 8px;"):
+                                ui.label("Aufgabe").style("color: var(--owl-accent); font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 13px;")
                             for d in dates:
                                 is_today = d == date.today()
-                                bg = "background: rgba(0,229,255,0.25);" if is_today else "background: #0A2540;"
-                                with ui.element("th").classes("p-2 text-center min-w-[110px] font-bold").style(bg):
+                                bg = "background: color-mix(in srgb, var(--owl-accent) 22%, var(--owl-strong-surface)); box-shadow: 0 0 0 2px var(--owl-accent);" if is_today else "background: var(--owl-strong-surface);"
+                                with ui.element("th").classes("p-2 text-center min-w-[110px] font-bold").style(bg + " border-radius: 8px;"):
                                     weekday = WEEKDAY_LABELS[d.weekday()]
                                     is_weekend = d.weekday() >= 5
-                                    col_style = "color: #00E5FF;" if is_today else ("color: #fb923c;" if is_weekend else "color: #e2e8f0;")
+                                    col_style = "color: var(--owl-accent); font-weight: 800;" if is_today else ("color: var(--owl-accent-2);" if is_weekend else "color: rgba(255,255,255,0.82);")
                                     ui.label(weekday).classes("text-[11px]").style(col_style)
-                                    ui.label(d.strftime("%d.%m")).style(col_style)
+                                    ui.label(d.strftime("%d.%m")).style(col_style + " font-weight: 700;")
 
                     with ui.element("tbody").props('id="task-tbody"'):
                         for task in tasks:
@@ -2290,9 +2390,9 @@ def main_page():
                                     is_today = d == date.today()
                                     cell_bg = f"background: {bg_c};"
                                     if is_today:
-                                        cell_bg += " box-shadow: inset 0 0 0 2px rgba(0,194,209,0.4);"
+                                        cell_bg += " box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--owl-accent) 60%, transparent);"
 
-                                    with ui.element("td").classes("p-1 text-center align-top hrp-matrix-cell").style(cell_bg):
+                                    with ui.element("td").classes("p-1 text-center align-top hrp-matrix-cell").style(cell_bg).props(f'data-status="{status}"'):
                                         _build_cell(task, d, inst, users_all, status)
 
             if is_admin:
@@ -2352,14 +2452,14 @@ def main_page():
                         strike = "text-decoration: line-through;" if completed else ""
                         ui.html(f'<span class="hrp-user-chip" style="background:{color};{strike}">{u.username[:2].upper()}</span>')
             else:
-                ui.html(f'<span style="color:{icon_c}; font-size:10px;">⚠ offen</span>')
+                ui.html(f'<span style="color:{icon_c}; font-size:11px; font-weight:600;">⚠ offen</span>')
 
             with ui.column().classes("items-center gap-0 mt-1 w-full"):
                 with ui.row().classes("hrp-cell-actions"):
                     if is_admin:
                         def open_assign(iid=inst.id, dt=d, t=task, aids=assigned_ids):
                             _open_assign_dialog(iid, dt, t, users_all, aids)
-                        ui.button(icon="groups", on_click=open_assign).props("flat round dense size=sm").style("color: #38bdf8;")
+                        ui.button(icon="groups", on_click=open_assign).props("flat round dense size=sm").style("color: var(--owl-accent);")
                     elif user.can_self_assign:
                         if user.id in assigned_ids:
                             def remove_self(iid=inst.id, uid=user.id):
@@ -2450,13 +2550,13 @@ def main_page():
         with mobile_container:
             if is_admin:
                 with ui.row().classes("gap-2 mb-3 flex-wrap"):
-                    ui.button("Aufgabe erstellen", on_click=_open_add_task_dialog, icon="add_task").props("rounded unelevated no-caps").style("background: #00C2D1; color: white;")
-                    ui.button("Tags", on_click=_open_manage_tags_dialog, icon="label").props("rounded flat no-caps").style("color: #0A2540;")
-                    ui.button("Benutzer", on_click=_open_manage_users_dialog, icon="group").props("rounded flat no-caps").style("color: #0A2540;")
+                    ui.button("Aufgabe erstellen", on_click=_open_add_task_dialog, icon="add_task").props("rounded unelevated no-caps").style("background: linear-gradient(135deg, var(--owl-accent), var(--owl-accent-strong)); color: white;")
+                    ui.button("Tags", on_click=_open_manage_tags_dialog, icon="label").props("rounded flat no-caps").style("color: var(--owl-text);")
+                    ui.button("Benutzer", on_click=_open_manage_users_dialog, icon="group").props("rounded flat no-caps").style("color: var(--owl-text);")
                     ui.separator().props("vertical").classes("h-6")
-                    ui.button("Preset speichern", on_click=_open_save_preset_dialog, icon="bookmark_add").props("rounded flat no-caps").style("color: #0A2540;")
-                    ui.button("Preset anwenden", on_click=_open_apply_preset_dialog, icon="bookmark").props("rounded flat no-caps").style("color: #0A2540;")
-                    ui.button("Presets", on_click=_open_manage_presets_dialog, icon="bookmarks").props("rounded flat no-caps").style("color: #0A2540;")
+                    ui.button("Preset speichern", on_click=_open_save_preset_dialog, icon="bookmark_add").props("rounded flat no-caps").style("color: var(--owl-text);")
+                    ui.button("Preset anwenden", on_click=_open_apply_preset_dialog, icon="bookmark").props("rounded flat no-caps").style("color: var(--owl-text);")
+                    ui.button("Presets", on_click=_open_manage_presets_dialog, icon="bookmarks").props("rounded flat no-caps").style("color: var(--owl-text);")
 
             if not tasks:
                 with ui.card().classes("w-full rounded-xl py-12").style("background: #ffffff; box-shadow: 0 2px 8px rgba(10,37,64,0.06);"):
@@ -2483,7 +2583,7 @@ def main_page():
                 with ui.row().classes("items-center gap-2 mt-5 mb-2"):
                     if is_today:
                         ui.badge("HEUTE", color="cyan").props("rounded")
-                    day_style = "color: #00C2D1; font-family: Outfit, sans-serif;" if is_today else ("color: #f97316; font-family: Outfit, sans-serif;" if is_weekend else "color: #0A2540; font-family: Outfit, sans-serif;")
+                    day_style = "color: var(--owl-accent); font-weight: 800;" if is_today else ("color: var(--owl-accent-2); font-weight: 700;" if is_weekend else "color: var(--owl-text); font-weight: 700;")
                     ui.label(f"{WEEKDAY_LABELS[d.weekday()]}, {d.strftime('%d.%m.%Y')}").classes("text-subtitle1 font-bold").style(day_style)
 
                 for task in tasks:
@@ -2509,18 +2609,18 @@ def main_page():
                                     ui.icon("radio_button_unchecked", size="24px", color="#94a3b8")
 
                                 with ui.column().classes("gap-0"):
-                                    ui.label(task.title).classes("text-subtitle2 font-bold").style("color: #0A2540;")
+                                    ui.label(task.title).classes("text-subtitle2 font-bold").style("color: var(--owl-text);")
                                     if task.description:
-                                        ui.label(task.description).classes("text-xs italic").style("color: #64748b;")
+                                        ui.label(task.description).classes("text-xs italic").style("color: var(--owl-muted);")
                                     with ui.row().classes("items-center gap-2 flex-wrap"):
                                         ui.badge(f"{task.base_duration_minutes} min", color="cyan").props("rounded")
                                         _render_tags(tags)
                                         if inst:
                                             _render_user_chips(inst.assigned_users, users_all)
                                             if inst.notes:
-                                                ui.html(f'<span style="font-size:10px;color:#64748b;">📝 {inst.notes[:40]}{"..." if len(inst.notes) > 40 else ""}</span>')
+                                                ui.html(f'<span style="font-size:10px;color:var(--owl-muted);">📝 {inst.notes[:40]}{"..." if len(inst.notes) > 40 else ""}</span>')
                                         elif status == "inactive":
-                                            ui.label("Nicht aktiv").classes("text-xs italic").style("color: #94a3b8;")
+                                            ui.label("Nicht aktiv").classes("text-xs italic").style("color: var(--owl-muted);")
 
                             with ui.row().classes("hrp-list-actions"):
                                 if inst is not None:
@@ -2528,7 +2628,7 @@ def main_page():
                                     if is_admin:
                                         def open_a(iid=inst.id, dt=d, t=task, aids=assigned_ids):
                                             _open_assign_dialog(iid, dt, t, users_all, aids)
-                                        ui.button(icon="groups", on_click=open_a).props("flat round dense").style("color: #38bdf8;")
+                                        ui.button(icon="groups", on_click=open_a).props("flat round dense").style("color: var(--owl-accent);")
                                     elif user.can_self_assign:
                                         if user.id in assigned_ids:
                                             def rem_self_l(iid=inst.id, uid=user.id):
@@ -2553,7 +2653,7 @@ def main_page():
                                                         db2.commit()
                                                 db2.close()
                                                 rebuild()
-                                            ui.button(icon="person_add_alt_1", on_click=add_self_l).props("flat round dense").style("color: #38bdf8;")
+                                            ui.button(icon="person_add_alt_1", on_click=add_self_l).props("flat round dense").style("color: var(--owl-accent);")
 
                                     if is_admin or user.id in assigned_ids:
                                         completed = inst.status == TaskStatus.COMPLETED
@@ -2574,7 +2674,7 @@ def main_page():
                                         if completed:
                                             ui.button("Erledigt", on_click=toggle_list, icon="verified", color="green").props("rounded unelevated no-caps size=sm")
                                         else:
-                                            ui.button("Erledigen", on_click=toggle_list, icon="flare").props("rounded unelevated no-caps size=sm").style("background: #00C2D1; color: white;")
+                                            ui.button("Erledigen", on_click=toggle_list, icon="flare").props("rounded unelevated no-caps size=sm").style("background: var(--owl-accent); color: white;")
 
                                     # Notes button in list
                                     def open_notes_l(iid=inst.id, dt=d, tt=task.title):
@@ -2607,7 +2707,7 @@ def main_page():
                                             db2.commit()
                                             db2.close()
                                             rebuild()
-                                        ui.button("Aktivieren", on_click=activate_l, icon="add_circle").props("flat rounded no-caps size=sm").style("color: #00C2D1;")
+                                        ui.button("Aktivieren", on_click=activate_l, icon="add_circle").props("flat rounded no-caps size=sm").style("color: var(--owl-accent);")
 
         db.close()
 
@@ -2649,7 +2749,7 @@ def main_page():
             # --------------- Unassigned tasks today ---------------
             with ui.row().classes("items-center gap-2 mt-2 mb-3"):
                 ui.icon("assignment_late", size="28px", color="#f59e0b")
-                ui.label("Offene Aufgaben ohne Zuweisung").classes("text-h6 font-bold").style("color: #0A2540; font-family: Outfit, sans-serif;")
+                ui.label("Offene Aufgaben ohne Zuweisung").classes("text-h6 font-bold").style("color: var(--owl-text);")
                 if unassigned_today:
                     ui.badge(str(len(unassigned_today)), color="orange").props("rounded")
 
@@ -2666,21 +2766,21 @@ def main_page():
                             with ui.row().classes("items-center gap-3"):
                                 ui.icon("help_outline", size="24px", color="#f59e0b")
                                 with ui.column().classes("gap-0"):
-                                    ui.label(inst.task.title).classes("text-subtitle2 font-bold").style("color: #0A2540;")
+                                    ui.label(inst.task.title).classes("text-subtitle2 font-bold").style("color: var(--owl-text);")
                                     with ui.row().classes("items-center gap-2 flex-wrap"):
                                         ui.badge(f"{inst.task.base_duration_minutes} min", color="cyan").props("rounded")
                                         _render_tags(inst.task.tags)
                             if is_admin:
                                 def open_a(iid=inst.id, t=inst.task, aids=[]):
                                     _open_assign_dialog(iid, today, t, users_all, aids)
-                                ui.button("Zuweisen", on_click=open_a, icon="group_add").props("rounded unelevated no-caps size=sm").style("background: #00C2D1; color: white;")
+                                ui.button("Zuweisen", on_click=open_a, icon="group_add").props("rounded unelevated no-caps size=sm").style("background: var(--owl-accent); color: white;")
 
             ui.separator().classes("my-4")
 
             # --------------- User cards ---------------
             with ui.row().classes("items-center gap-2 mb-3"):
-                ui.icon("group", size="28px").style("color: #00C2D1;")
-                ui.label("Haushaltsmitglieder").classes("text-h6 font-bold").style("color: #0A2540; font-family: Outfit, sans-serif;")
+                ui.icon("group", size="28px").style("color: var(--owl-accent);")
+                ui.label("Haushaltsmitglieder").classes("text-h6 font-bold").style("color: var(--owl-text);")
 
             user_detail_container = ui.column().classes("w-full")
 
@@ -2701,41 +2801,41 @@ def main_page():
 
                 with user_detail_container:
                     with ui.card().classes("w-full rounded-xl").style(
-                        f"background: #ffffff; border-top: 4px solid {color}; box-shadow: 0 4px 16px rgba(10,37,64,0.12);"
+                        f"background: var(--owl-surface); border-top: 4px solid {color}; box-shadow: 0 4px 16px var(--owl-border);"
                     ) as detail_card:
                         with ui.row().classes("w-full items-center justify-between mb-3"):
                             with ui.row().classes("items-center gap-3"):
                                 ui.html(f'<span class="hrp-user-chip" style="background:{color}; font-size:14px; padding: 4px 14px;">{target_user.username}</span>')
-                                ui.label(f"Kapazität: {target_user.daily_capacity_minutes} Min/Tag").classes("text-sm").style("color: #64748b;")
+                                ui.label(f"Kapazität: {target_user.daily_capacity_minutes} Min/Tag").classes("text-sm").style("color: var(--owl-muted);")
                             ui.button(icon="close", on_click=lambda: user_detail_container.clear()).props("flat round dense color=grey")
 
                         def _render_task_section(title: str, icon_name: str, icon_color: str, task_list: list[TaskInstance], show_date: bool = False):
                             with ui.row().classes("items-center gap-2 mt-2 mb-1"):
                                 ui.icon(icon_name, size="20px", color=icon_color)
-                                ui.label(title).classes("text-subtitle2 font-bold").style("color: #0A2540;")
+                                ui.label(title).classes("text-subtitle2 font-bold").style("color: var(--owl-text);")
                                 ui.badge(str(len(task_list)), color="grey").props("rounded")
                             if not task_list:
-                                ui.label("Keine Aufgaben").classes("text-xs italic ml-7").style("color: #94a3b8;")
+                                ui.label("Keine Aufgaben").classes("text-xs italic ml-7").style("color: var(--owl-muted);")
                             else:
                                 for inst in task_list:
                                     status = _cell_status(inst, inst.date)
                                     border_c, bg_c, _ = CELL_STYLES[status]
                                     with ui.card().classes("w-full mb-1 py-1 px-3 rounded-lg").style(
-                                        f"background: #f8fafc; border-left: 3px solid {border_c};"
+                                        f"background: var(--owl-surface-soft); border-left: 3px solid {border_c};"
                                     ):
                                         with ui.row().classes("items-center justify-between w-full"):
                                             with ui.row().classes("items-center gap-2"):
                                                 if status == "completed":
-                                                    ui.icon("verified", size="18px", color="#22c55e")
+                                                    ui.icon("verified", size="18px", color="#10b981")
                                                 elif status == "overdue":
-                                                    ui.icon("warning_amber", size="18px", color="#ff4d6d")
+                                                    ui.icon("warning_amber", size="18px", color="#ef4444")
                                                 else:
-                                                    ui.icon("shield", size="18px").style("color: #38bdf8;")
-                                                ui.label(inst.task.title).classes("text-sm font-medium").style("color: #0A2540;")
+                                                    ui.icon("shield", size="18px").style("color: var(--owl-accent);")
+                                                ui.label(inst.task.title).classes("text-sm font-medium").style("color: var(--owl-text);")
                                                 ui.badge(f"{inst.task.base_duration_minutes} min", color="cyan").props("rounded")
                                                 _render_tags(inst.task.tags)
                                                 if show_date:
-                                                    ui.label(inst.date.strftime("%d.%m")).classes("text-xs").style("color: #64748b;")
+                                                    ui.label(inst.date.strftime("%d.%m")).classes("text-xs").style("color: var(--owl-muted);")
                                             if is_admin or user.id in [u.id for u in inst.assigned_users]:
                                                 completed = inst.status == TaskStatus.COMPLETED
                                                 def toggle_s(iid=inst.id):
@@ -2766,7 +2866,7 @@ def main_page():
                         today_mins = sum(i.task.base_duration_minutes / max(len(i.assigned_users), 1) for i in user_today)
                         with ui.row().classes("mt-3 items-center gap-2"):
                             ui.icon("schedule", size="18px", color=color)
-                            ui.label(f"Heute geplant: {today_mins:.0f} / {target_user.daily_capacity_minutes} Min").classes("text-sm font-medium").style("color: #0A2540;")
+                            ui.label(f"Heute geplant: {today_mins:.0f} / {target_user.daily_capacity_minutes} Min").classes("text-sm font-medium").style("color: var(--owl-text);")
 
                 db2.close()
 
@@ -2790,11 +2890,11 @@ def main_page():
                             ui.html(f'<span class="hrp-user-chip" style="background:{color}; font-size:14px; padding: 4px 14px;">{u.username}</span>')
                             with ui.row().classes("gap-3"):
                                 with ui.column().classes("items-center gap-0"):
-                                    ui.label(f"{user_today_count}").classes("text-lg font-bold").style("color: #0A2540;")
-                                    ui.label("Aufgaben").classes("text-[10px] uppercase").style("color: #64748b;")
+                                    ui.label(f"{user_today_count}").classes("text-lg font-bold").style("color: var(--owl-text);")
+                                    ui.label("Aufgaben").classes("text-[10px] uppercase").style("color: var(--owl-muted);")
                                 with ui.column().classes("items-center gap-0"):
-                                    ui.label(f"{today_mins:.0f}").classes("text-lg font-bold").style("color: #0A2540;")
-                                    ui.label("Minuten").classes("text-[10px] uppercase").style("color: #64748b;")
+                                    ui.label(f"{today_mins:.0f}").classes("text-lg font-bold").style("color: var(--owl-text);")
+                                    ui.label("Minuten").classes("text-[10px] uppercase").style("color: var(--owl-muted);")
                             if user_overdue_count > 0:
                                 ui.badge(f"{user_overdue_count} überfällig", color="red").props("rounded")
 
