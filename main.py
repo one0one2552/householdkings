@@ -1155,7 +1155,7 @@ def main_page():
         ui.run_javascript("window.hrpCelebrate && window.hrpCelebrate();")
 
     # --------------- Header ---------------
-    with ui.header().classes("items-center justify-between px-6 py-3"):
+    with ui.header().classes("items-center justify-between px-6 py-3").style("position: relative !important;"):
         with ui.row().classes("items-center gap-3"):
             ui.html('<div class="hrp-crest"></div>')
             with ui.column().classes("gap-0"):
@@ -1185,7 +1185,7 @@ def main_page():
     _custom_row_holder: list = [None]
 
     with ui.card().classes("w-full rounded-xl mx-4 mt-3 px-4 py-3 hrp-nav-card").style(
-        "background: #ffffff; box-shadow: 0 2px 8px rgba(10,37,64,0.08); border-bottom: 2px solid rgba(0,229,255,0.4);"
+        "background: #ffffff; box-shadow: 0 2px 8px rgba(10,37,64,0.08); border-bottom: 2px solid rgba(0,229,255,0.4); position: sticky; top: 0; z-index: 100;"
     ):
         with ui.row().classes("w-full items-center justify-center gap-4 flex-wrap"):
             def _prev():
