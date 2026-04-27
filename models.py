@@ -129,6 +129,32 @@ class TaskInstance(Base):
     )
 
 
+class Preset(Base):
+    __tablename__ = "presets"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    period_type: Mapped[str] = mapped_column(String, nullable=False)  # "week" | "two_weeks"
+    start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    created_at: Mapped[str] = mapped_column(String, nullable=False)  # ISO format timestamp
+
+    items = relationship("PresetItem", back_populates="preset", cascade="all, delete-orphan")
+
+
+class PresetItem(Base):
+    __tablename__ = "preset_items"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    preset_id: Mapped[str] = mapped_column(String, ForeignKey("presets.id", ondelete="CASCADE"), nullable=False)
+    task_id: Mapped[str] = mapped_column(String, nullable=False)  # Reference, may not exist in current DB
+    task_title: Mapped[str] = mapped_column(String, nullable=False)  # Store for reference
+    day_offset: Mapped[int] = mapped_column(Integer, nullable=False)  # 0-6 for week, 0-13 for two weeks
+    assigned_user_id: Mapped[str] = mapped_column(String, nullable=False)
+    assigned_username: Mapped[str] = mapped_column(String, nullable=False)  # Store for reference
+
+    preset = relationship("Preset", back_populates="items")
+
+
 def _migrate_db():
     """Apply incremental schema migrations for existing databases."""
     import sqlite3 as _sqlite3

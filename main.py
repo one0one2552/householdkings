@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from nicegui import app as nicegui_app, ui
 from sqlalchemy import text
@@ -24,6 +24,8 @@ from models import (
     init_db,
     task_instance_users,
     task_tags,
+    Preset,
+    PresetItem,
 )
 
 # Weekday helpers: 0=Monday … 6=Sunday (Python weekday())
@@ -1608,6 +1610,401 @@ def main_page():
                 ui.button("Abbrechen", on_click=dlg.close).props("flat rounded no-caps")
                 ui.button("Speichern", on_click=save_note).props("rounded unelevated no-caps").style("background: #00C2D1; color: white;")
         dlg.open()
+
+    # --------------- Preset dialogs ---------------
+    def _open_save_preset_dialog():
+        db = _get_db()
+        dates = get_dates()
+        tasks = db.query(Task).options(joinedload(Task.tags)).order_by(Task.sort_order, Task.title).all()
+        
+        # Get all instances in the current date range
+        instances = (
+            db.query(TaskInstance)
+            .options(joinedload(TaskInstance.assigned_users), joinedload(TaskInstance.task))
+            .filter(TaskInstance.date.in_(dates))
+            .all()
+        )
+        
+        # Group instances by task
+        task_instances_map = defaultdict(list)
+        for inst in instances:
+            if inst.assigned_users:  # Only include instances with assignments
+                task_instances_map[inst.task_id].append(inst)
+        
+        # Filter tasks that have at least one assigned instance
+        tasks_with_assignments = [t for t in tasks if t.id in task_instances_map]
+        
+        db.close()
+        
+        if not tasks_with_assignments:
+            ui.notify("Keine zugewiesenen Aufgaben im aktuellen Zeitraum", type="warning")
+            return
+        
+        with ui.dialog() as dlg, ui.card().classes("w-[600px] rounded-xl max-h-[80vh] overflow-y-auto").style("background: #ffffff;"):
+            ui.label("Preset speichern").classes("text-h6 font-bold").style("color: #0A2540; font-family: Outfit, sans-serif;")
+            ui.label("Wählen Sie die Aufgaben und Zuweisungen, die Sie als Preset speichern möchten.").classes("text-caption mb-3").style("color: #64748b;")
+            
+            preset_name_input = ui.input("Preset Name").props("outlined rounded").classes("w-full mb-3")
+            
+            # Period type selection
+            period_type_toggle = ui.toggle(
+                {"week": "1 Woche", "two_weeks": "2 Wochen"},
+                value="week"
+            ).props("rounded dense no-caps").classes("mb-3")
+            
+            # Start date selection (default to current view's start date)
+            start_date_val = dates[0] if dates else date.today()
+            start_date_input = ui.input(value=start_date_val.isoformat()).props("outlined rounded dense type=date").classes("w-full mb-3")
+            ui.label("Startdatum (Referenz für das Preset)").classes("text-xs mb-3").style("color: #64748b;")
+            
+            ui.separator().classes("my-2")
+            ui.label("Aufgaben auswählen:").classes("text-subtitle2 font-bold mb-2")
+            
+            task_checkboxes = {}
+            
+            for task in tasks_with_assignments:
+                with ui.card().classes("w-full mb-2 py-2 px-3 rounded-lg").style("background: #f8fafc;"):
+                    task_cb = ui.checkbox(task.title, value=True).classes("font-medium")
+                    task_checkboxes[task.id] = task_cb
+                    
+                    # Show assigned instances for this task
+                    task_insts = task_instances_map[task.id]
+                    with ui.column().classes("ml-6 mt-1 gap-1"):
+                        for inst in task_insts:
+                            if inst.assigned_users:
+                                users_str = ", ".join([u.username for u in inst.assigned_users])
+                                ui.label(f"📅 {inst.date.strftime('%d.%m.%Y')} → {users_str}").classes("text-xs").style("color: #64748b;")
+            
+            def save_preset():
+                preset_name = preset_name_input.value.strip()
+                if not preset_name:
+                    ui.notify("Bitte geben Sie einen Preset-Namen ein", type="negative")
+                    return
+                
+                selected_task_ids = [tid for tid, cb in task_checkboxes.items() if cb.value]
+                if not selected_task_ids:
+                    ui.notify("Bitte wählen Sie mindestens eine Aufgabe aus", type="negative")
+                    return
+                
+                try:
+                    ref_start_date = date.fromisoformat(start_date_input.value)
+                except ValueError:
+                    ui.notify("Ungültiges Startdatum", type="negative")
+                    return
+                
+                period_type = period_type_toggle.value
+                max_days = 7 if period_type == "week" else 14
+                
+                db2 = _get_db()
+                
+                # Create preset
+                preset = Preset(
+                    id=str(uuid.uuid4()),
+                    name=preset_name,
+                    period_type=period_type,
+                    start_date=ref_start_date,
+                    created_at=datetime.now().isoformat()
+                )
+                db2.add(preset)
+                db2.flush()
+                
+                # Add preset items
+                for task_id in selected_task_ids:
+                    task_insts = task_instances_map[task_id]
+                    task_obj = db2.query(Task).get(task_id)
+                    if not task_obj:
+                        continue
+                    
+                    for inst in task_insts:
+                        if not inst.assigned_users:
+                            continue
+                        
+                        # Calculate day offset from reference start date
+                        day_offset = (inst.date - ref_start_date).days
+                        if day_offset < 0 or day_offset >= max_days:
+                            continue  # Skip instances outside the period
+                        
+                        # Create a preset item for each assigned user
+                        for user in inst.assigned_users:
+                            preset_item = PresetItem(
+                                id=str(uuid.uuid4()),
+                                preset_id=preset.id,
+                                task_id=task_obj.id,
+                                task_title=task_obj.title,
+                                day_offset=day_offset,
+                                assigned_user_id=user.id,
+                                assigned_username=user.username
+                            )
+                            db2.add(preset_item)
+                
+                db2.commit()
+                db2.close()
+                
+                dlg.close()
+                ui.notify(f"Preset '{preset_name}' gespeichert!", type="positive")
+            
+            with ui.row().classes("w-full justify-end gap-2 mt-3"):
+                ui.button("Abbrechen", on_click=dlg.close).props("flat rounded no-caps")
+                ui.button("Speichern", on_click=save_preset, icon="save").props("rounded unelevated no-caps").style("background: #00C2D1; color: white;")
+        
+        dlg.open()
+
+    def _open_apply_preset_dialog():
+        db = _get_db()
+        presets = db.query(Preset).order_by(Preset.created_at.desc()).all()
+        db.close()
+        
+        if not presets:
+            ui.notify("Keine Presets vorhanden. Bitte erstellen Sie zuerst ein Preset.", type="warning")
+            return
+        
+        # Get current view's start date
+        dates = get_dates()
+        current_start_date = dates[0] if dates else date.today()
+        
+        with ui.dialog() as dlg, ui.card().classes("w-[600px] rounded-xl max-h-[80vh] overflow-y-auto").style("background: #ffffff;"):
+            ui.label("Preset anwenden").classes("text-h6 font-bold").style("color: #0A2540; font-family: Outfit, sans-serif;")
+            ui.label("Wählen Sie ein Preset und konfigurieren Sie die Anwendung.").classes("text-caption mb-3").style("color: #64748b;")
+            
+            # Preset selection
+            preset_options = {p.id: f"{p.name} ({p.period_type}, {p.start_date.strftime('%d.%m.%Y')})" for p in presets}
+            preset_select = ui.select(preset_options, label="Preset auswählen").props("outlined rounded").classes("w-full mb-3")
+            
+            # Start date for application
+            apply_start_date = ui.input(value=current_start_date.isoformat()).props("outlined rounded dense type=date").classes("w-full mb-2")
+            ui.label("Startdatum für die Anwendung").classes("text-xs mb-3").style("color: #64748b;")
+            
+            # Repeat count
+            repeat_count = ui.number("Wiederholungen", value=1, min=1, max=52).props("outlined rounded dense").classes("w-full mb-3")
+            ui.label("Anzahl der Wiederholungen (z.B. 2 = zweimal anwenden)").classes("text-xs mb-3").style("color: #64748b;")
+            
+            # Task selection container
+            task_selection_container = ui.column().classes("w-full")
+            
+            def update_task_selection():
+                task_selection_container.clear()
+                if not preset_select.value:
+                    return
+                
+                db2 = _get_db()
+                preset = db2.query(Preset).options(joinedload(Preset.items)).get(preset_select.value)
+                if not preset:
+                    db2.close()
+                    return
+                
+                # Group items by task_id
+                task_items_map = defaultdict(list)
+                for item in preset.items:
+                    task_items_map[item.task_id].append(item)
+                
+                with task_selection_container:
+                    ui.separator().classes("my-2")
+                    ui.label("Aufgaben im Preset:").classes("text-subtitle2 font-bold mb-2")
+                    
+                    task_checkboxes = {}
+                    for task_id, items in task_items_map.items():
+                        task_title = items[0].task_title
+                        with ui.card().classes("w-full mb-2 py-2 px-3 rounded-lg").style("background: #f8fafc;"):
+                            task_cb = ui.checkbox(task_title, value=True).classes("font-medium")
+                            task_checkboxes[task_id] = task_cb
+                            
+                            # Show details
+                            with ui.column().classes("ml-6 mt-1 gap-1"):
+                                for item in items:
+                                    ui.label(f"Tag {item.day_offset} → {item.assigned_username}").classes("text-xs").style("color: #64748b;")
+                    
+                    # Store checkboxes for save function
+                    task_selection_container.task_checkboxes = task_checkboxes
+                
+                db2.close()
+            
+            preset_select.on_value_change(lambda: update_task_selection())
+            
+            def apply_preset():
+                if not preset_select.value:
+                    ui.notify("Bitte wählen Sie ein Preset aus", type="negative")
+                    return
+                
+                try:
+                    apply_start = date.fromisoformat(apply_start_date.value)
+                except ValueError:
+                    ui.notify("Ungültiges Startdatum", type="negative")
+                    return
+                
+                repeat_times = int(repeat_count.value)
+                
+                # Get selected tasks
+                selected_task_ids = []
+                if hasattr(task_selection_container, 'task_checkboxes'):
+                    selected_task_ids = [tid for tid, cb in task_selection_container.task_checkboxes.items() if cb.value]
+                
+                if not selected_task_ids:
+                    ui.notify("Bitte wählen Sie mindestens eine Aufgabe aus", type="negative")
+                    return
+                
+                db2 = _get_db()
+                preset = db2.query(Preset).options(joinedload(Preset.items)).get(preset_select.value)
+                if not preset:
+                    db2.close()
+                    ui.notify("Preset nicht gefunden", type="negative")
+                    return
+                
+                # Save preset name before closing session
+                preset_name = preset.name
+                period_days = 7 if preset.period_type == "week" else 14
+                
+                # Apply preset for each repetition
+                for rep in range(repeat_times):
+                    rep_start_date = apply_start + timedelta(days=rep * period_days)
+                    
+                    for item in preset.items:
+                        if item.task_id not in selected_task_ids:
+                            continue
+                        
+                        # Calculate the actual date for this item
+                        actual_date = rep_start_date + timedelta(days=item.day_offset)
+                        
+                        # Find or create task
+                        task = db2.query(Task).get(item.task_id)
+                        if not task:
+                            # Task doesn't exist, create it
+                            task = Task(
+                                id=item.task_id,
+                                title=item.task_title,
+                                base_duration_minutes=30,
+                                is_recurring=False,
+                                sort_order=0
+                            )
+                            db2.add(task)
+                            db2.flush()
+                        
+                        # Find or create task instance
+                        inst = db2.query(TaskInstance).filter(
+                            TaskInstance.task_id == task.id,
+                            TaskInstance.date == actual_date
+                        ).first()
+                        
+                        if not inst:
+                            inst = TaskInstance(
+                                id=str(uuid.uuid4()),
+                                task_id=task.id,
+                                date=actual_date,
+                                status=TaskStatus.OPEN,
+                                notes=f"Hinzugefügt am {date.today().isoformat()} durch Preset '{preset_name}'"
+                            )
+                            db2.add(inst)
+                            db2.flush()
+                        else:
+                            # Append to existing notes
+                            if inst.notes:
+                                inst.notes += f"\nPreset '{preset_name}' angewendet am {date.today().isoformat()}"
+                            else:
+                                inst.notes = f"Preset '{preset_name}' angewendet am {date.today().isoformat()}"
+                        
+                        # Find or create user
+                        user = db2.query(User).get(item.assigned_user_id)
+                        if not user:
+                            # User doesn't exist anymore, skip assignment
+                            continue
+                        
+                        # Add user to instance if not already assigned
+                        if user not in inst.assigned_users:
+                            inst.assigned_users.append(user)
+                
+                db2.commit()
+                db2.close()
+                
+                ui.notify(f"Preset '{preset_name}' erfolgreich angewendet!", type="positive")
+                dlg.close()
+                rebuild()
+            
+            with ui.row().classes("w-full justify-end gap-2 mt-3"):
+                ui.button("Abbrechen", on_click=dlg.close).props("flat rounded no-caps")
+                ui.button("Anwenden", on_click=apply_preset, icon="play_arrow").props("rounded unelevated no-caps").style("background: #00C2D1; color: white;")
+        
+        # Initial load
+        if presets:
+            preset_select.value = presets[0].id
+            update_task_selection()
+        
+        dlg.open()
+
+    def _open_manage_presets_dialog():
+        with ui.dialog() as dlg, ui.card().classes("w-[600px] rounded-xl max-h-[80vh] overflow-y-auto").style("background: #ffffff;"):
+            ui.label("Presets verwalten").classes("text-h6 font-bold").style("color: #0A2540; font-family: Outfit, sans-serif;")
+            presets_container = ui.column().classes("w-full mt-3")
+            
+            def refresh_presets():
+                presets_container.clear()
+                db = _get_db()
+                presets = db.query(Preset).options(joinedload(Preset.items)).order_by(Preset.created_at.desc()).all()
+                
+                with presets_container:
+                    if not presets:
+                        ui.label("Keine Presets vorhanden").classes("text-gray-400 text-sm")
+                    else:
+                        for preset in presets:
+                            period_label = "1 Woche" if preset.period_type == "week" else "2 Wochen"
+                            item_count = len(preset.items)
+                            unique_tasks = len(set(item.task_id for item in preset.items))
+                            
+                            with ui.card().classes("w-full mb-2 py-2 px-3 rounded-lg").style("background: #f8fafc; border-left: 3px solid #00C2D1;"):
+                                with ui.row().classes("w-full items-center justify-between"):
+                                    with ui.column().classes("gap-1"):
+                                        ui.label(preset.name).classes("font-bold text-base").style("color: #0A2540;")
+                                        ui.label(f"{period_label} | Start: {preset.start_date.strftime('%d.%m.%Y')}").classes("text-xs").style("color: #64748b;")
+                                        ui.label(f"{unique_tasks} Aufgaben, {item_count} Zuweisungen").classes("text-xs").style("color: #64748b;")
+                                    
+                                    with ui.row().classes("gap-1"):
+                                        def view_preset(pid=preset.id):
+                                            db2 = _get_db()
+                                            p = db2.query(Preset).options(joinedload(Preset.items)).get(pid)
+                                            if p:
+                                                task_items = defaultdict(list)
+                                                for item in p.items:
+                                                    task_items[item.task_title].append((item.day_offset, item.assigned_username))
+                                                
+                                                details = []
+                                                for task_title, assignments in task_items.items():
+                                                    details.append(f"**{task_title}**")
+                                                    for day_offset, username in sorted(assignments):
+                                                        details.append(f"  Tag {day_offset}: {username}")
+                                                
+                                                with ui.dialog() as view_dlg, ui.card().classes("w-[500px] rounded-xl").style("background: #ffffff;"):
+                                                    ui.label(f"Preset: {p.name}").classes("text-h6 font-bold mb-3").style("color: #0A2540;")
+                                                    with ui.column().classes("w-full gap-1"):
+                                                        for detail in details:
+                                                            if detail.startswith("**"):
+                                                                ui.label(detail.strip("*")).classes("font-bold mt-2").style("color: #0A2540;")
+                                                            else:
+                                                                ui.label(detail).classes("text-sm ml-4").style("color: #64748b;")
+                                                    ui.button("Schließen", on_click=view_dlg.close).props("flat rounded no-caps").classes("mt-3")
+                                                view_dlg.open()
+                                            db2.close()
+                                        
+                                        ui.button(icon="visibility", on_click=view_preset).props("flat round dense size=sm").style("color: #00C2D1;")
+                                        
+                                        def delete_preset(pid=preset.id):
+                                            db2 = _get_db()
+                                            p = db2.query(Preset).get(pid)
+                                            if p:
+                                                db2.delete(p)
+                                                db2.commit()
+                                            db2.close()
+                                            refresh_presets()
+                                            ui.notify("Preset gelöscht", type="warning")
+                                        
+                                        ui.button(icon="delete", on_click=delete_preset).props("flat round dense size=sm color=red")
+                
+                db.close()
+            
+            refresh_presets()
+            
+            with ui.row().classes("w-full justify-end gap-2 mt-3"):
+                ui.button("Schließen", on_click=dlg.close).props("flat rounded no-caps")
+        
+        dlg.open()
+
     def _open_manage_tags_dialog():
         with ui.dialog() as dlg, ui.card().classes("w-[450px] rounded-xl").style("background: #ffffff;"):
             ui.label("Tags verwalten").classes("text-h6 font-bold").style("color: #0A2540; font-family: Outfit, sans-serif;")
@@ -1822,6 +2219,10 @@ def main_page():
                     ui.button("Aufgabe erstellen", on_click=_open_add_task_dialog, icon="add_task").props("rounded unelevated no-caps").style("background: #00C2D1; color: white;")
                     ui.button("Tags", on_click=_open_manage_tags_dialog, icon="label").props("rounded flat no-caps").style("color: #0A2540;")
                     ui.button("Benutzer", on_click=_open_manage_users_dialog, icon="group").props("rounded flat no-caps").style("color: #0A2540;")
+                    ui.separator().props("vertical").classes("h-6")
+                    ui.button("Preset speichern", on_click=_open_save_preset_dialog, icon="bookmark_add").props("rounded flat no-caps").style("color: #0A2540;")
+                    ui.button("Preset anwenden", on_click=_open_apply_preset_dialog, icon="bookmark").props("rounded flat no-caps").style("color: #0A2540;")
+                    ui.button("Presets", on_click=_open_manage_presets_dialog, icon="bookmarks").props("rounded flat no-caps").style("color: #0A2540;")
 
             if not tasks:
                 with ui.card().classes("w-full rounded-xl py-12").style("background: #ffffff; box-shadow: 0 2px 8px rgba(10,37,64,0.06);"):
@@ -2048,10 +2449,14 @@ def main_page():
 
         with mobile_container:
             if is_admin:
-                with ui.row().classes("gap-2 mb-3"):
+                with ui.row().classes("gap-2 mb-3 flex-wrap"):
                     ui.button("Aufgabe erstellen", on_click=_open_add_task_dialog, icon="add_task").props("rounded unelevated no-caps").style("background: #00C2D1; color: white;")
                     ui.button("Tags", on_click=_open_manage_tags_dialog, icon="label").props("rounded flat no-caps").style("color: #0A2540;")
                     ui.button("Benutzer", on_click=_open_manage_users_dialog, icon="group").props("rounded flat no-caps").style("color: #0A2540;")
+                    ui.separator().props("vertical").classes("h-6")
+                    ui.button("Preset speichern", on_click=_open_save_preset_dialog, icon="bookmark_add").props("rounded flat no-caps").style("color: #0A2540;")
+                    ui.button("Preset anwenden", on_click=_open_apply_preset_dialog, icon="bookmark").props("rounded flat no-caps").style("color: #0A2540;")
+                    ui.button("Presets", on_click=_open_manage_presets_dialog, icon="bookmarks").props("rounded flat no-caps").style("color: #0A2540;")
 
             if not tasks:
                 with ui.card().classes("w-full rounded-xl py-12").style("background: #ffffff; box-shadow: 0 2px 8px rgba(10,37,64,0.06);"):
