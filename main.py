@@ -186,6 +186,40 @@ def _build_recurrence_rule(mode: str, days: list[int], anchor_date: date | None)
     return ",".join(str(d) for d in selected_days)
 
 
+# ---------------------------------------------------------------------------
+# Multi-rule helpers  (rules are separated by ";;" inside recurrence_rule)
+# ---------------------------------------------------------------------------
+
+RULE_SEPARATOR = ";;"
+
+
+def _split_rules(rules_str: str | None) -> list[str]:
+    """Split a compound recurrence rule string into individual rule strings."""
+    if not rules_str or not rules_str.strip():
+        return []
+    return [r.strip() for r in rules_str.split(RULE_SEPARATOR) if r.strip()]
+
+
+def _join_rules(rules: list[str]) -> str | None:
+    """Join individual rule strings into one compound recurrence rule string."""
+    cleaned = [r for r in rules if r and r.strip()]
+    return RULE_SEPARATOR.join(cleaned) if cleaned else None
+
+
+def _recurrence_matches_any(rules_str: str | None, d: date) -> bool:
+    """Return True if *any* rule in rules_str matches the given date."""
+    for rule in _split_rules(rules_str):
+        if _recurrence_matches(rule, d):
+            return True
+    return False
+
+
+def _recurrence_labels_all(rules_str: str | None) -> str:
+    """Return a combined human-readable label for all recurrence rules."""
+    labels = [_recurrence_label(r) for r in _split_rules(rules_str) if _recurrence_label(r)]
+    return " + ".join(labels) if labels else ""
+
+
 def _recurrence_matches(rule: str | None, d: date) -> bool:
     config = _parse_recurrence_rule(rule)
     if config["kind"] == "monthly":
@@ -300,17 +334,13 @@ def _ensure_recurring_instances(db: Session, tasks: list[Task], dates: list[date
         existing.add((inst.task_id, inst.date))
     created = False
     for task in tasks:
-        config = _parse_recurrence_rule(task.recurrence_rule)
-        if config["kind"] == "monthly":
-            if not config["month_day"]:
-                continue
-        elif not config["days"]:
+        if not _split_rules(task.recurrence_rule):
             continue
         excluded = _get_excluded_dates(task)
         for d in dates:
             if d in excluded:
                 continue
-            if _recurrence_matches(task.recurrence_rule, d) and (task.id, d) not in existing:
+            if _recurrence_matches_any(task.recurrence_rule, d) and (task.id, d) not in existing:
                 inst = TaskInstance(
                     id=str(uuid.uuid4()),
                     task_id=task.id,
@@ -1557,13 +1587,10 @@ def main_page():
                         should_assign = (_week_start(d) - _week_start(assignment_cfg["anchor"])).days % 14 == 0
                 if not should_assign:
                     continue
-                # Check task recurrence
-                if not _recurrence_matches(task.recurrence_rule, d):
-                    continue
-                # Get or create instance
+                # Assign to an existing instance; only create a new one when the task actually recurs here
                 if d in existing_by_date:
                     inst = existing_by_date[d]
-                else:
+                elif _recurrence_matches_any(task.recurrence_rule, d):
                     inst = TaskInstance(
                         id=str(uuid.uuid4()),
                         task_id=task.id,
@@ -1573,6 +1600,8 @@ def main_page():
                     db.add(inst)
                     db.flush()
                     existing_by_date[d] = inst
+                else:
+                    continue
                 if uid not in [u2.id for u2 in inst.assigned_users]:
                     inst.assigned_users.append(u)
         db.commit()
@@ -1583,7 +1612,7 @@ def main_page():
         all_tags = db.query(Tag).order_by(Tag.name).all()
         tag_options = {t.id: t.name for t in all_tags}
 
-        with ui.dialog() as dlg, ui.card().classes("w-[480px] rounded-xl").style("background: #ffffff;"):
+        with ui.dialog() as dlg, ui.card().classes("w-[560px] rounded-xl max-h-[90vh] overflow-y-auto").style("background: #ffffff;"):
             ui.label("Neue Aufgabe").classes("text-h6 font-bold").style("color: #0A2540; font-family: Outfit, sans-serif;")
             title_in = ui.input("Titel").props("outlined rounded").classes("w-full")
             desc_in = ui.textarea("Beschreibung (optional)").props("outlined rounded autogrow").classes("w-full")
@@ -1594,19 +1623,53 @@ def main_page():
             else:
                 tag_select = None
 
-            day_cbs, daily_cb, recurrence_mode = _weekday_picker()
+            # ---- Multi-rule section ----
             ui.separator().classes("my-1")
-            ui.label("Datum (für einmalige Aufgaben sowie als Startdatum für 'Alle 2 Wochen' oder 'Alle 4 Wochen'): ").classes("text-caption").style("color: #64748b;")
+            ui.label("Wiederholungsregeln").classes("text-sm font-semibold mt-1").style("color: var(--owl-text);")
+            rules_area_add = ui.column().classes("w-full gap-2 mt-1")
+            rule_entries_add: list[dict] = []
+
+            def _add_rule_card_add(initial_days: list[int] | None = None, initial_mode: str = "weekly", initial_anchor: date | None = None):
+                if initial_days is None:
+                    initial_days = []
+                if initial_anchor is None:
+                    initial_anchor = date.today()
+                entry: dict = {}
+                rule_entries_add.append(entry)
+                with rules_area_add:
+                    with ui.card().classes("w-full py-2 px-3 rounded-lg").style(
+                        "background: var(--owl-surface-soft); border-left: 3px solid var(--owl-accent);"
+                    ) as rule_card:
+                        with ui.row().classes("w-full items-center justify-between mb-1"):
+                            ui.label("Regel").classes("text-xs font-bold").style("color: var(--owl-muted);")
+                            def on_remove_add(e=entry, card=rule_card):
+                                if e in rule_entries_add:
+                                    rule_entries_add.remove(e)
+                                card.delete()
+                            ui.button(icon="remove_circle", on_click=on_remove_add).props("flat round dense size=xs color=red")
+                        day_cbs_r, daily_cb_r, mode_r = _weekday_picker(initial_days, initial_mode)
+                        anchor_r = ui.input(value=initial_anchor.isoformat()).props("outlined rounded dense type=date").classes("w-full mt-1")
+                        ui.label("Startdatum (für 'Alle 2 Wochen' / 'Alle 4 Wochen')").classes("text-caption").style("color: var(--owl-muted);")
+                        entry.update({"day_cbs": day_cbs_r, "daily_cb": daily_cb_r, "mode": mode_r, "anchor": anchor_r})
+
+            ui.button("+ Regel hinzufügen", icon="add_circle", on_click=_add_rule_card_add).props("flat rounded no-caps dense").style("color: var(--owl-accent);")
+            ui.separator().classes("my-1")
+            ui.label("Datum (für einmalige Aufgaben ohne Regel):").classes("text-caption").style("color: #64748b;")
             date_in = ui.input(value=date.today().isoformat()).props("outlined rounded dense type=date").classes("w-full")
 
             def save():
-                selected = _selected_days_from_checkboxes(day_cbs, daily_cb)
-                recurrence_kind = recurrence_mode.value or "weekly"
-                try:
-                    anchor_date = date.fromisoformat(date_in.value) if date_in.value else date.today()
-                except ValueError:
-                    anchor_date = date.today()
-                recurrence_rule = _build_recurrence_rule(recurrence_kind, selected, anchor_date)
+                all_rule_strs = []
+                for ent in rule_entries_add:
+                    sel = _selected_days_from_checkboxes(ent["day_cbs"], ent["daily_cb"])
+                    mode = ent["mode"].value or "weekly"
+                    try:
+                        anch = date.fromisoformat(ent["anchor"].value) if ent["anchor"].value else date.today()
+                    except ValueError:
+                        anch = date.today()
+                    r = _build_recurrence_rule(mode, sel, anch)
+                    if r:
+                        all_rule_strs.append(r)
+                recurrence_rule = _join_rules(all_rule_strs)
                 db2 = _get_db()
                 max_order = db2.query(Task.sort_order).order_by(Task.sort_order.desc()).first()
                 next_order = (max_order[0] + 1) if max_order and max_order[0] is not None else 0
@@ -1651,11 +1714,9 @@ def main_page():
         if not task:
             db.close()
             return
-        recurrence_cfg = _parse_recurrence_rule(task.recurrence_rule)
-        current_days = recurrence_cfg["days"]
+        recurrence_cfg = _parse_recurrence_rule(_split_rules(task.recurrence_rule)[0] if _split_rules(task.recurrence_rule) else None)
         # "monthly" is no longer a toggle option; fall back to "weekly" so the dialog opens without error
         _VALID_MODES = {"weekly", "biweekly", "4weekly"}
-        current_mode = recurrence_cfg["kind"] if recurrence_cfg["kind"] in _VALID_MODES else "weekly"
         current_tag_ids = [t.id for t in task.tags]
         first_instance_date = min((inst.date for inst in task.instances), default=date.today())
         if recurrence_cfg["anchor"]:
@@ -1668,7 +1729,7 @@ def main_page():
         all_tags = db.query(Tag).order_by(Tag.name).all()
         tag_options = {t.id: t.name for t in all_tags}
 
-        with ui.dialog() as dlg, ui.card().classes("w-[480px] rounded-xl").style("background: #ffffff;"):
+        with ui.dialog() as dlg, ui.card().classes("w-[560px] rounded-xl max-h-[90vh] overflow-y-auto").style("background: #ffffff;"):
             ui.label("Aufgabe bearbeiten").classes("text-h6 font-bold").style("color: #0A2540; font-family: Outfit, sans-serif;")
             title_in = ui.input("Titel", value=task.title).props("outlined rounded").classes("w-full")
             desc_in = ui.textarea("Beschreibung", value=task.description or "").props("outlined rounded autogrow").classes("w-full")
@@ -1679,19 +1740,61 @@ def main_page():
             else:
                 tag_select = None
 
-            day_cbs, daily_cb, recurrence_mode = _weekday_picker(current_days, current_mode)
+            # ---- Multi-rule section ----
             ui.separator().classes("my-1")
-            ui.label("Datum (für einmalige Aufgaben sowie als Startdatum für 'Alle 2 Wochen' oder 'Alle 4 Wochen'): ").classes("text-caption").style("color: #64748b;")
+            ui.label("Wiederholungsregeln").classes("text-sm font-semibold mt-1").style("color: var(--owl-text);")
+            rules_area_edit = ui.column().classes("w-full gap-2 mt-1")
+            rule_entries_edit: list[dict] = []
+
+            def _add_rule_card_edit(initial_days: list[int] | None = None, initial_mode: str = "weekly", initial_anchor: date | None = None):
+                if initial_days is None:
+                    initial_days = []
+                if initial_anchor is None:
+                    initial_anchor = current_anchor
+                entry: dict = {}
+                rule_entries_edit.append(entry)
+                with rules_area_edit:
+                    with ui.card().classes("w-full py-2 px-3 rounded-lg").style(
+                        "background: var(--owl-surface-soft); border-left: 3px solid var(--owl-accent);"
+                    ) as rule_card:
+                        with ui.row().classes("w-full items-center justify-between mb-1"):
+                            ui.label("Regel").classes("text-xs font-bold").style("color: var(--owl-muted);")
+                            def on_remove_edit(e=entry, card=rule_card):
+                                if e in rule_entries_edit:
+                                    rule_entries_edit.remove(e)
+                                card.delete()
+                            ui.button(icon="remove_circle", on_click=on_remove_edit).props("flat round dense size=xs color=red")
+                        day_cbs_r, daily_cb_r, mode_r = _weekday_picker(initial_days, initial_mode)
+                        anchor_r = ui.input(value=initial_anchor.isoformat()).props("outlined rounded dense type=date").classes("w-full mt-1")
+                        ui.label("Startdatum (für 'Alle 2 Wochen' / 'Alle 4 Wochen')").classes("text-caption").style("color: var(--owl-muted);")
+                        entry.update({"day_cbs": day_cbs_r, "daily_cb": daily_cb_r, "mode": mode_r, "anchor": anchor_r})
+
+            # Populate existing rules
+            _VALID_MODES_R = {"weekly", "biweekly", "4weekly"}
+            for rule_str in _split_rules(task.recurrence_rule):
+                rcfg = _parse_recurrence_rule(rule_str)
+                r_mode = rcfg["kind"] if rcfg["kind"] in _VALID_MODES_R else "weekly"
+                r_anchor = rcfg.get("anchor") or current_anchor
+                _add_rule_card_edit(rcfg["days"], r_mode, r_anchor)
+
+            ui.button("+ Regel hinzufügen", icon="add_circle", on_click=_add_rule_card_edit).props("flat rounded no-caps dense").style("color: var(--owl-accent);")
+            ui.separator().classes("my-1")
+            ui.label("Datum (für einmalige Aufgaben ohne Regel):").classes("text-caption").style("color: #64748b;")
             date_in = ui.input(value=current_anchor.isoformat()).props("outlined rounded dense type=date").classes("w-full")
 
             def save():
-                selected = _selected_days_from_checkboxes(day_cbs, daily_cb)
-                recurrence_kind = recurrence_mode.value or "weekly"
-                try:
-                    anchor_date = date.fromisoformat(date_in.value) if date_in.value else date.today()
-                except ValueError:
-                    anchor_date = date.today()
-                recurrence_rule = _build_recurrence_rule(recurrence_kind, selected, anchor_date)
+                all_rule_strs = []
+                for ent in rule_entries_edit:
+                    sel = _selected_days_from_checkboxes(ent["day_cbs"], ent["daily_cb"])
+                    mode = ent["mode"].value or "weekly"
+                    try:
+                        anch = date.fromisoformat(ent["anchor"].value) if ent["anchor"].value else date.today()
+                    except ValueError:
+                        anch = date.today()
+                    r = _build_recurrence_rule(mode, sel, anch)
+                    if r:
+                        all_rule_strs.append(r)
+                recurrence_rule = _join_rules(all_rule_strs)
                 db2 = _get_db()
                 t = db2.query(Task).options(joinedload(Task.tags)).get(task_id)
                 t.title = title_in.value.strip()
@@ -2409,7 +2512,7 @@ def main_page():
 
                     with ui.element("tbody").props('id="task-tbody"'):
                         for task in tasks:
-                            rec_label = _recurrence_label(task.recurrence_rule)
+                            rec_label = _recurrence_labels_all(task.recurrence_rule)
 
                             with ui.element("tr").props(f'data-task-id="{task.id}"').classes("cursor-move"):
                                 with ui.element("td").classes("p-2 sticky left-0 z-10 hrp-matrix-task-col"):
