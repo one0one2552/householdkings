@@ -1809,9 +1809,27 @@ def main_page():
                         if tag:
                             t.tags.append(tag)
                 db2.commit()
+                # Delete recurring instances whose dates are no longer covered by any rule
+                if recurrence_rule:
+                    stale = (
+                        db2.query(TaskInstance)
+                        .filter(TaskInstance.task_id == task_id)
+                        .all()
+                    )
+                    excluded = _get_excluded_dates(t)
+                    removed = 0
+                    for inst in stale:
+                        if inst.date not in excluded and not _recurrence_matches_any(recurrence_rule, inst.date):
+                            db2.delete(inst)
+                            removed += 1
+                    if removed:
+                        db2.commit()
                 db2.close()
                 dlg.close()
-                ui.notify("Aufgabe aktualisiert!", type="positive")
+                msg = "Aufgabe aktualisiert!"
+                if recurrence_rule and removed:
+                    msg = f"Aufgabe aktualisiert – {removed} Termin(e) entfernt"
+                ui.notify(msg, type="positive")
                 rebuild()
 
             def delete():
