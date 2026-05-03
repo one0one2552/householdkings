@@ -1285,6 +1285,10 @@ def main_page():
         "background: var(--owl-surface); box-shadow: 0 2px 8px var(--owl-border); border-bottom: 1px solid var(--owl-border); position: sticky; top: 0; z-index: 100;"
     ):
         with ui.row().classes("w-full items-center justify-center gap-4 flex-wrap"):
+            def _prev_week():
+                state["ref_date"] -= timedelta(weeks=1)
+                rebuild()
+
             def _prev():
                 delta = {"week": timedelta(weeks=1), "2weeks": timedelta(weeks=2), "4weeks": timedelta(weeks=4)}.get(state["view_mode"], timedelta(weeks=1))
                 state["ref_date"] -= delta
@@ -1295,9 +1299,15 @@ def main_page():
                 state["ref_date"] += delta
                 rebuild()
 
-            ui.button(icon="chevron_left", on_click=_prev).props("flat round dense").style("color: var(--owl-text);")
+            def _next_week():
+                state["ref_date"] += timedelta(weeks=1)
+                rebuild()
+
+            ui.button(icon="keyboard_double_arrow_left", on_click=_prev).props("flat round dense").style("color: var(--owl-text);")
+            ui.button(icon="chevron_left", on_click=_prev_week).props("flat round dense").style("color: var(--owl-text);")
             date_label = ui.label("").classes("text-subtitle1 min-w-[200px] text-center hrp-date-range")
-            ui.button(icon="chevron_right", on_click=_next).props("flat round dense").style("color: var(--owl-text);")
+            ui.button(icon="chevron_right", on_click=_next_week).props("flat round dense").style("color: var(--owl-text);")
+            ui.button(icon="keyboard_double_arrow_right", on_click=_next).props("flat round dense").style("color: var(--owl-text);")
 
             ui.separator().props("vertical").classes("h-6")
 
