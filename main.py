@@ -1825,8 +1825,53 @@ def main_page():
                 ui.notify("Aufgabe gelöscht", type="warning")
                 rebuild()
 
+            def copy_task():
+                db2 = _get_db()
+                src = db2.query(Task).options(
+                    joinedload(Task.tags),
+                    joinedload(Task.instances).joinedload(TaskInstance.assigned_users),
+                ).get(task_id)
+                if not src:
+                    db2.close()
+                    return
+                max_order = db2.query(Task.sort_order).order_by(Task.sort_order.desc()).first()
+                next_order = (max_order[0] + 1) if max_order and max_order[0] is not None else 0
+                new_task = Task(
+                    id=str(uuid.uuid4()),
+                    title=f"{src.title} - Kopie",
+                    description=src.description,
+                    base_duration_minutes=src.base_duration_minutes,
+                    is_recurring=src.is_recurring,
+                    recurrence_rule=src.recurrence_rule,
+                    excluded_dates=src.excluded_dates,
+                    sort_order=next_order,
+                )
+                for tag in src.tags:
+                    new_task.tags.append(tag)
+                db2.add(new_task)
+                db2.flush()
+                for inst in src.instances:
+                    new_inst = TaskInstance(
+                        id=str(uuid.uuid4()),
+                        task_id=new_task.id,
+                        date=inst.date,
+                        status=TaskStatus.OPEN,
+                        notes=inst.notes,
+                    )
+                    db2.add(new_inst)
+                    db2.flush()
+                    for u in inst.assigned_users:
+                        new_inst.assigned_users.append(u)
+                db2.commit()
+                db2.close()
+                dlg.close()
+                ui.notify(f"Aufgabe kopiert: {src.title} - Kopie", type="positive")
+                rebuild()
+
             with ui.row().classes("w-full justify-between mt-3"):
-                ui.button("Löschen", on_click=delete, icon="delete").props("flat rounded no-caps color=red")
+                with ui.row().classes("gap-2"):
+                    ui.button("Löschen", on_click=delete, icon="delete").props("flat rounded no-caps color=red")
+                    ui.button("Kopieren", on_click=copy_task, icon="content_copy").props("flat rounded no-caps").style("color: var(--owl-accent);")
                 with ui.row().classes("gap-2"):
                     ui.button("Abbrechen", on_click=dlg.close).props("flat rounded no-caps")
                     ui.button("Speichern", on_click=save).props("rounded unelevated no-caps").style("background: #00C2D1; color: white;")
