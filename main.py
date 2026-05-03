@@ -101,15 +101,9 @@ def _two_week_dates(ref: date) -> list[date]:
     return [start + timedelta(days=i) for i in range(14)]
 
 
-def _month_dates(ref: date) -> list[date]:
-    first = ref.replace(day=1)
-    next_month = (first + timedelta(days=32)).replace(day=1)
-    days = []
-    d = first
-    while d < next_month:
-        days.append(d)
-        d += timedelta(days=1)
-    return days
+def _four_week_dates(ref: date) -> list[date]:
+    start = ref - timedelta(days=ref.weekday())
+    return [start + timedelta(days=i) for i in range(28)]
 
 
 def _parse_weekday_csv(value: str | None) -> list[int]:
@@ -138,6 +132,16 @@ def _parse_recurrence_rule(rule: str | None) -> dict:
     if rule.startswith("biweekly|"):
         parts = rule.split("|", 2)
         config["kind"] = "biweekly"
+        config["days"] = _parse_weekday_csv(parts[1] if len(parts) > 1 else None)
+        if len(parts) > 2:
+            try:
+                config["anchor"] = date.fromisoformat(parts[2])
+            except ValueError:
+                pass
+        return config
+    if rule.startswith("4weekly|"):
+        parts = rule.split("|", 2)
+        config["kind"] = "4weekly"
         config["days"] = _parse_weekday_csv(parts[1] if len(parts) > 1 else None)
         if len(parts) > 2:
             try:
@@ -176,6 +180,9 @@ def _build_recurrence_rule(mode: str, days: list[int], anchor_date: date | None)
     if mode == "biweekly":
         anchor = anchor_date or date.today()
         return f"biweekly|{','.join(str(d) for d in selected_days)}|{anchor.isoformat()}"
+    if mode == "4weekly":
+        anchor = anchor_date or date.today()
+        return f"4weekly|{','.join(str(d) for d in selected_days)}|{anchor.isoformat()}"
     return ",".join(str(d) for d in selected_days)
 
 
@@ -193,6 +200,11 @@ def _recurrence_matches(rule: str | None, d: date) -> bool:
     rec_days = config["days"]
     if d.weekday() not in rec_days:
         return False
+    if config["kind"] == "4weekly":
+        anchor = config["anchor"]
+        if not anchor or d < anchor:
+            return False
+        return (_week_start(d) - _week_start(anchor)).days % 28 == 0
     if config["kind"] != "biweekly":
         return True
 
@@ -211,8 +223,12 @@ def _recurrence_label(rule: str | None) -> str:
     if not rec_days:
         return ""
     if len(rec_days) == 7:
+        if config["kind"] == "4weekly":
+            return "Alle 4 Wochen"
         return "Alle 2 Wochen" if config["kind"] == "biweekly" else "Täglich"
     day_list = ", ".join(WEEKDAY_MAP[dd] for dd in rec_days)
+    if config["kind"] == "4weekly":
+        return f"Alle 4 Wochen: {day_list}"
     if config["kind"] == "biweekly":
         return f"Alle 2 Wochen: {day_list}"
     return day_list
@@ -1219,37 +1235,19 @@ def main_page():
     _wstart = _today - timedelta(days=_today.weekday())
     state = {
         "view_mode": "week",
-        "ref_date": _today,
+        "ref_date": _wstart,
         "display": "matrix",
-        "custom_start": _wstart,
-        "custom_end": _wstart + timedelta(days=6),
-        "start_today": False,
     }
 
     def get_dates():
-        today = date.today()
-        if state["view_mode"] == "custom":
-            s, e = state["custom_start"], state["custom_end"]
-            if e < s:
-                e = s
-            days, d = [], s
-            while d <= e and len(days) < 62:
-                days.append(d)
-                d += timedelta(days=1)
-            return days
-        start = today if state["start_today"] else state["ref_date"]
+        start = state["ref_date"]
         if state["view_mode"] == "week":
-            if state["start_today"]:
-                return [today + timedelta(days=i) for i in range(7)]
             return _week_dates(start)
         if state["view_mode"] == "2weeks":
-            if state["start_today"]:
-                return [today + timedelta(days=i) for i in range(14)]
             return _two_week_dates(start)
-        # month
-        if state["start_today"]:
-            return [today + timedelta(days=i) for i in range(30)]
-        return _month_dates(start)
+        if state["view_mode"] == "4weeks":
+            return _four_week_dates(start)
+        return _week_dates(start)
 
     def _celebrate_completion():
         ui.run_javascript("window.hrpCelebrate && window.hrpCelebrate();")
@@ -1282,22 +1280,19 @@ def main_page():
         ui.navigate.to("/login")
 
     # --------------- Navigation ---------------
-    _custom_row_holder: list = [None]
 
     with ui.card().classes("w-full rounded-xl mx-4 mt-3 px-4 py-3 hrp-nav-card").style(
         "background: var(--owl-surface); box-shadow: 0 2px 8px var(--owl-border); border-bottom: 1px solid var(--owl-border); position: sticky; top: 0; z-index: 100;"
     ):
         with ui.row().classes("w-full items-center justify-center gap-4 flex-wrap"):
             def _prev():
-                if state["view_mode"] != "custom":
-                    delta = {"week": timedelta(weeks=1), "2weeks": timedelta(weeks=2)}.get(state["view_mode"], timedelta(days=30))
-                    state["ref_date"] -= delta
+                delta = {"week": timedelta(weeks=1), "2weeks": timedelta(weeks=2), "4weeks": timedelta(weeks=4)}.get(state["view_mode"], timedelta(weeks=1))
+                state["ref_date"] -= delta
                 rebuild()
 
             def _next():
-                if state["view_mode"] != "custom":
-                    delta = {"week": timedelta(weeks=1), "2weeks": timedelta(weeks=2)}.get(state["view_mode"], timedelta(days=30))
-                    state["ref_date"] += delta
+                delta = {"week": timedelta(weeks=1), "2weeks": timedelta(weeks=2), "4weeks": timedelta(weeks=4)}.get(state["view_mode"], timedelta(weeks=1))
+                state["ref_date"] += delta
                 rebuild()
 
             ui.button(icon="chevron_left", on_click=_prev).props("flat round dense").style("color: var(--owl-text);")
@@ -1308,20 +1303,13 @@ def main_page():
 
             def toggle_view(val):
                 state["view_mode"] = val
-                if _custom_row_holder[0]:
-                    _custom_row_holder[0].set_visibility(val == "custom")
                 rebuild()
 
             ui.toggle(
-                {"week": "1 Woche", "2weeks": "2 Wochen", "month": "Monat", "custom": "Benutzerdefiniert"},
+                {"week": "1 Woche", "2weeks": "2 Wochen", "4weeks": "4 Wochen"},
                 value="week",
                 on_change=lambda e: toggle_view(e.value),
             ).props("rounded dense no-caps").style("color: var(--owl-text);")
-
-            def toggle_start_today(e):
-                state["start_today"] = e.value
-                rebuild()
-            ui.checkbox("Ab Heute", value=False, on_change=toggle_start_today).style("color: var(--owl-text); font-size: 13px;")
 
             ui.separator().props("vertical").classes("h-6")
 
@@ -1336,26 +1324,10 @@ def main_page():
             ).props("rounded dense no-caps").style("color: var(--owl-text);")
 
             def go_today():
-                state["ref_date"] = date.today()
+                today = date.today()
+                state["ref_date"] = today - timedelta(days=today.weekday())
                 rebuild()
             ui.button("Heute", icon="today", on_click=go_today).props("flat rounded dense no-caps").style("color: var(--owl-text);")
-
-        custom_row = ui.row().classes("w-full justify-center gap-3 items-center mt-1 pb-1")
-        _custom_row_holder[0] = custom_row
-        custom_row.set_visibility(False)
-        with custom_row:
-            ui.label("Von:").classes("text-sm font-medium").style("color: var(--owl-text);")
-            cs_input = ui.input(value=state["custom_start"].isoformat()).props("outlined rounded dense type=date")
-            ui.label("Bis:").classes("text-sm font-medium").style("color: var(--owl-text);")
-            ce_input = ui.input(value=state["custom_end"].isoformat()).props("outlined rounded dense type=date")
-            def apply_custom():
-                try:
-                    state["custom_start"] = date.fromisoformat(cs_input.value)
-                    state["custom_end"] = date.fromisoformat(ce_input.value)
-                    rebuild()
-                except ValueError:
-                    ui.notify("Ungültiges Datum", type="negative")
-            ui.button("Anwenden", on_click=apply_custom).props("rounded unelevated no-caps size=sm").style("background: #00C2D1; color: white;")
 
     # --------------- Containers ---------------
     matrix_container = ui.column().classes("w-full px-4 mt-3")
@@ -1401,7 +1373,7 @@ def main_page():
                 checkboxes[i] = cb
             ui.separator().props("vertical").classes("h-5 mx-1")
             recurrence_mode = ui.toggle(
-                {"weekly": "Wöchentlich", "biweekly": "Alle 2 Wochen", "monthly": "1x pro Monat"},
+                {"weekly": "Wöchentlich", "biweekly": "Alle 2 Wochen", "4weekly": "Alle 4 Wochen"},
                 value=initial_mode,
             ).props("rounded dense no-caps")
         return checkboxes, daily_cb, recurrence_mode
@@ -1419,9 +1391,17 @@ def main_page():
         weekday_label = WEEKDAY_LABELS[instance_date.weekday()]
         biweekly_mode = _build_biweekly_assignment_mode(instance_date)
 
-        with ui.dialog() as dlg, ui.card().classes("w-[500px] rounded-xl").style("background: #ffffff;"):
+        # Default until = 1 year from the instance date so recurring rules propagate properly
+        _default_until = instance_date + timedelta(days=365)
+
+        with ui.dialog() as dlg, ui.card().classes("w-[540px] rounded-xl").style("background: #ffffff;"):
             ui.label("Personen zuweisen").classes("text-h6 font-bold").style("color: #0A2540; font-family: Outfit, sans-serif;")
             ui.label(f"{task.title} – {instance_date.strftime('%A, %d.%m.%Y')}").classes("text-caption mb-2").style("color: #64748b;")
+
+            with ui.row().classes("items-center gap-3 mb-2"):
+                ui.label("Eintragen bis:").classes("text-sm font-medium").style("color: var(--owl-text);")
+                until_input = ui.input(value=_default_until.isoformat()).props("outlined rounded dense type=date").style("max-width: 180px;")
+                ui.label("(gilt für Intervall-Zuweisungen)").classes("text-xs").style("color: #94a3b8;")
 
             rows: list[dict] = []
             for idx, u in enumerate(fresh_users):
@@ -1448,7 +1428,7 @@ def main_page():
                         ).props("dense outlined rounded").classes("flex-1")
                         if is_assigned:
                             remove_scope_select = ui.select(
-                                {"single": "Nur diese", "all": "Alle im Zeitraum"},
+                                {"single": "Nur diese", "all": "Alle im Zeitraum", "always": "Immer"},
                                 value="single",
                                 label="Entfernen:",
                             ).props("dense outlined rounded").style("min-width: 120px;")
@@ -1457,6 +1437,10 @@ def main_page():
                         rows.append({"user_id": u.id, "cb": cb, "mode": mode_select, "was_assigned": is_assigned, "remove_scope": remove_scope_select})
 
             def save_assign():
+                try:
+                    until_date = date.fromisoformat(until_input.value) if until_input.value else _default_until
+                except ValueError:
+                    until_date = _default_until
                 db2 = _get_db()
                 instance = db2.query(TaskInstance).options(joinedload(TaskInstance.assigned_users)).get(instance_id)
                 if not instance:
@@ -1478,12 +1462,27 @@ def main_page():
                                 _set_assignment_mode(db2, instance_id, r["user_id"], mode_val)
 
                 db2.commit()
-                _apply_assignment_rules(db2, instance, rows)
-                # Remove from all instances in date range if requested
+                _apply_assignment_rules(db2, instance, rows, until_date)
+                # Remove from instances if requested
                 dates_now = get_dates()
                 for r in rows:
-                    if r.get("was_assigned") and not r["cb"].value and r.get("remove_scope") and r["remove_scope"].value == "all":
-                        _remove_user_from_all_instances(db2, instance.task_id, r["user_id"], dates_now)
+                    if r.get("was_assigned") and not r["cb"].value and r.get("remove_scope"):
+                        scope = r["remove_scope"].value
+                        if scope == "all":
+                            _remove_user_from_all_instances(db2, instance.task_id, r["user_id"], dates_now)
+                        elif scope == "always":
+                            all_insts = (
+                                db2.query(TaskInstance)
+                                .options(joinedload(TaskInstance.assigned_users))
+                                .filter(TaskInstance.task_id == instance.task_id)
+                                .all()
+                            )
+                            u_obj = db2.query(User).get(r["user_id"])
+                            if u_obj:
+                                for ai in all_insts:
+                                    if u_obj in ai.assigned_users:
+                                        ai.assigned_users.remove(u_obj)
+                            db2.commit()
                 db2.close()
                 dlg.close()
                 ui.notify("Zuweisung gespeichert", type="positive")
@@ -1495,18 +1494,32 @@ def main_page():
         db.close()
         dlg.open()
 
-    def _apply_assignment_rules(db: Session, source_instance: TaskInstance, rows: list[dict]):
-        dates = get_dates()
-        other_instances = (
+    def _apply_assignment_rules(db: Session, source_instance: TaskInstance, rows: list[dict], until_date: date | None = None):
+        task = db.query(Task).get(source_instance.task_id)
+        if not task:
+            return
+
+        # Build date range: day after source instance up to until_date
+        end_date = until_date or get_dates()[-1]
+        all_dates: list[date] = []
+        d = source_instance.date + timedelta(days=1)
+        while d <= end_date:
+            all_dates.append(d)
+            d += timedelta(days=1)
+        if not all_dates:
+            return
+
+        excluded = _get_excluded_dates(task)
+
+        # Load existing instances in the range
+        existing_instances = (
             db.query(TaskInstance)
             .options(joinedload(TaskInstance.assigned_users))
-            .filter(
-                TaskInstance.task_id == source_instance.task_id,
-                TaskInstance.date.in_(dates),
-                TaskInstance.id != source_instance.id,
-            )
+            .filter(TaskInstance.task_id == source_instance.task_id, TaskInstance.date.in_(all_dates))
             .all()
         )
+        existing_by_date: dict[date, TaskInstance] = {inst.date: inst for inst in existing_instances}
+
         for r in rows:
             if not r["cb"].value:
                 continue
@@ -1514,22 +1527,44 @@ def main_page():
             if mode_val == "none":
                 continue
             uid = r["user_id"]
-            for other_inst in other_instances:
+            u = db.query(User).get(uid)
+            if not u:
+                continue
+            for d in all_dates:
+                if d in excluded:
+                    continue
+                # Check assignment mode interval
                 should_assign = False
                 if mode_val == "immer":
                     should_assign = True
                 elif mode_val.startswith("jeden_"):
                     weekday = int(mode_val.split("_")[1])
-                    if other_inst.date.weekday() == weekday:
+                    if d.weekday() == weekday:
                         should_assign = True
                 elif mode_val.startswith("2weeks|"):
                     assignment_cfg = _parse_assignment_mode_config(mode_val, source_instance.date)
-                    if other_inst.date >= assignment_cfg["anchor"] and other_inst.date.weekday() == assignment_cfg["weekday"]:
-                        should_assign = (_week_start(other_inst.date) - _week_start(assignment_cfg["anchor"])).days % 14 == 0
-                if should_assign and uid not in [u.id for u in other_inst.assigned_users]:
-                    u = db.query(User).get(uid)
-                    if u:
-                        other_inst.assigned_users.append(u)
+                    if d >= assignment_cfg["anchor"] and d.weekday() == assignment_cfg["weekday"]:
+                        should_assign = (_week_start(d) - _week_start(assignment_cfg["anchor"])).days % 14 == 0
+                if not should_assign:
+                    continue
+                # Check task recurrence
+                if not _recurrence_matches(task.recurrence_rule, d):
+                    continue
+                # Get or create instance
+                if d in existing_by_date:
+                    inst = existing_by_date[d]
+                else:
+                    inst = TaskInstance(
+                        id=str(uuid.uuid4()),
+                        task_id=task.id,
+                        date=d,
+                        status=TaskStatus.OPEN,
+                    )
+                    db.add(inst)
+                    db.flush()
+                    existing_by_date[d] = inst
+                if uid not in [u2.id for u2 in inst.assigned_users]:
+                    inst.assigned_users.append(u)
         db.commit()
 
     # --------------- Task dialogs ---------------
@@ -1551,7 +1586,7 @@ def main_page():
 
             day_cbs, daily_cb, recurrence_mode = _weekday_picker()
             ui.separator().classes("my-1")
-            ui.label("Datum (für einmalige Aufgaben sowie als Startdatum für 'Alle 2 Wochen' oder '1x pro Monat'): ").classes("text-caption").style("color: #64748b;")
+            ui.label("Datum (für einmalige Aufgaben sowie als Startdatum für 'Alle 2 Wochen' oder 'Alle 4 Wochen'): ").classes("text-caption").style("color: #64748b;")
             date_in = ui.input(value=date.today().isoformat()).props("outlined rounded dense type=date").classes("w-full")
 
             def save():
@@ -1634,7 +1669,7 @@ def main_page():
 
             day_cbs, daily_cb, recurrence_mode = _weekday_picker(current_days, current_mode)
             ui.separator().classes("my-1")
-            ui.label("Datum (für einmalige Aufgaben sowie als Startdatum für 'Alle 2 Wochen' oder '1x pro Monat'): ").classes("text-caption").style("color: #64748b;")
+            ui.label("Datum (für einmalige Aufgaben sowie als Startdatum für 'Alle 2 Wochen' oder 'Alle 4 Wochen'): ").classes("text-caption").style("color: #64748b;")
             date_in = ui.input(value=current_anchor.isoformat()).props("outlined rounded dense type=date").classes("w-full")
 
             def save():
@@ -1748,7 +1783,7 @@ def main_page():
             
             # Period type selection
             period_type_toggle = ui.toggle(
-                {"week": "1 Woche", "two_weeks": "2 Wochen"},
+                {"week": "1 Woche", "two_weeks": "2 Wochen", "four_weeks": "4 Wochen"},
                 value="week"
             ).props("rounded dense no-caps").classes("mb-3")
             
@@ -1793,7 +1828,7 @@ def main_page():
                     return
                 
                 period_type = period_type_toggle.value
-                max_days = 7 if period_type == "week" else 14
+                max_days = 7 if period_type == "week" else 28 if period_type == "four_weeks" else 14
                 
                 db2 = _get_db()
                 
@@ -1951,7 +1986,7 @@ def main_page():
                 
                 # Save preset name before closing session
                 preset_name = preset.name
-                period_days = 7 if preset.period_type == "week" else 14
+                period_days = 7 if preset.period_type == "week" else 28 if preset.period_type == "four_weeks" else 14
                 
                 # Apply preset for each repetition
                 for rep in range(repeat_times):
