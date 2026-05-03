@@ -1643,7 +1643,9 @@ def main_page():
             return
         recurrence_cfg = _parse_recurrence_rule(task.recurrence_rule)
         current_days = recurrence_cfg["days"]
-        current_mode = recurrence_cfg["kind"]
+        # "monthly" is no longer a toggle option; fall back to "weekly" so the dialog opens without error
+        _VALID_MODES = {"weekly", "biweekly", "4weekly"}
+        current_mode = recurrence_cfg["kind"] if recurrence_cfg["kind"] in _VALID_MODES else "weekly"
         current_tag_ids = [t.id for t in task.tags]
         first_instance_date = min((inst.date for inst in task.instances), default=date.today())
         if recurrence_cfg["anchor"]:
