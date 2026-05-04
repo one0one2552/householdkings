@@ -376,7 +376,7 @@ def _remove_user_from_all_instances(db: Session, task_id: str, user_id: str, dat
         .filter(TaskInstance.task_id == task_id, TaskInstance.date.in_(dates))
         .all()
     )
-    u_obj = db.query(User).get(user_id)
+    u_obj = db.get(User, user_id)
     if not u_obj:
         return
     for inst in instances:
@@ -1482,7 +1482,7 @@ def main_page():
                 except ValueError:
                     until_date = _default_until
                 db2 = _get_db()
-                instance = db2.query(TaskInstance).options(joinedload(TaskInstance.assigned_users)).get(instance_id)
+                instance = db2.get(TaskInstance, instance_id, options=[joinedload(TaskInstance.assigned_users)])
                 if not instance:
                     db2.close()
                     dlg.close()
@@ -1493,7 +1493,7 @@ def main_page():
 
                 for r in rows:
                     if r["cb"].value:
-                        u = db2.query(User).get(r["user_id"])
+                        u = db2.get(User, r["user_id"])
                         if u:
                             instance.assigned_users.append(u)
                             db2.flush()
@@ -1517,7 +1517,7 @@ def main_page():
                                 .filter(TaskInstance.task_id == instance.task_id)
                                 .all()
                             )
-                            u_obj = db2.query(User).get(r["user_id"])
+                            u_obj = db2.get(User, r["user_id"])
                             if u_obj:
                                 for ai in all_insts:
                                     if u_obj in ai.assigned_users:
@@ -1535,7 +1535,7 @@ def main_page():
         dlg.open()
 
     def _apply_assignment_rules(db: Session, source_instance: TaskInstance, rows: list[dict], until_date: date | None = None):
-        task = db.query(Task).get(source_instance.task_id)
+        task = db.get(Task, source_instance.task_id)
         if not task:
             return
 
@@ -1567,7 +1567,7 @@ def main_page():
             if mode_val == "none":
                 continue
             uid = r["user_id"]
-            u = db.query(User).get(uid)
+            u = db.get(User, uid)
             if not u:
                 continue
             for d in all_dates:
@@ -1684,7 +1684,7 @@ def main_page():
                 )
                 if tag_select and tag_select.value:
                     for tid in tag_select.value:
-                        tag = db2.query(Tag).get(tid)
+                        tag = db2.get(Tag, tid)
                         if tag:
                             t.tags.append(tag)
                 db2.add(t)
@@ -1710,7 +1710,7 @@ def main_page():
 
     def _open_edit_task_dialog(task_id: str):
         db = _get_db()
-        task = db.query(Task).options(joinedload(Task.tags), joinedload(Task.instances)).get(task_id)
+        task = db.get(Task, task_id, options=[joinedload(Task.tags), joinedload(Task.instances)])
         if not task:
             db.close()
             return
@@ -1796,7 +1796,7 @@ def main_page():
                         all_rule_strs.append(r)
                 recurrence_rule = _join_rules(all_rule_strs)
                 db2 = _get_db()
-                t = db2.query(Task).options(joinedload(Task.tags)).get(task_id)
+                t = db2.get(Task, task_id, options=[joinedload(Task.tags)])
                 t.title = title_in.value.strip()
                 t.description = desc_in.value.strip() or None
                 t.base_duration_minutes = int(dur_in.value)
@@ -1805,7 +1805,7 @@ def main_page():
                 t.tags.clear()
                 if tag_select and tag_select.value:
                     for tid in tag_select.value:
-                        tag = db2.query(Tag).get(tid)
+                        tag = db2.get(Tag, tid)
                         if tag:
                             t.tags.append(tag)
                 db2.commit()
@@ -1834,7 +1834,7 @@ def main_page():
 
             def delete():
                 db2 = _get_db()
-                t = db2.query(Task).get(task_id)
+                t = db2.get(Task, task_id)
                 if t:
                     db2.delete(t)
                     db2.commit()
@@ -1845,18 +1845,19 @@ def main_page():
 
             def copy_task():
                 db2 = _get_db()
-                src = db2.query(Task).options(
+                src = db2.get(Task, task_id, options=[
                     joinedload(Task.tags),
                     joinedload(Task.instances).joinedload(TaskInstance.assigned_users),
-                ).get(task_id)
+                ])
                 if not src:
                     db2.close()
                     return
+                src_title = src.title  # capture before session closes
                 max_order = db2.query(Task.sort_order).order_by(Task.sort_order.desc()).first()
                 next_order = (max_order[0] + 1) if max_order and max_order[0] is not None else 0
                 new_task = Task(
                     id=str(uuid.uuid4()),
-                    title=f"{src.title} - Kopie",
+                    title=f"{src_title} - Kopie",
                     description=src.description,
                     base_duration_minutes=src.base_duration_minutes,
                     is_recurring=src.is_recurring,
@@ -1883,7 +1884,7 @@ def main_page():
                 db2.commit()
                 db2.close()
                 dlg.close()
-                ui.notify(f"Aufgabe kopiert: {src.title} - Kopie", type="positive")
+                ui.notify(f"Aufgabe kopiert: {src_title} - Kopie", type="positive")
                 rebuild()
 
             with ui.row().classes("w-full justify-between mt-3"):
@@ -1899,7 +1900,7 @@ def main_page():
     # --------------- Notes dialog ---------------
     def _open_notes_dialog(instance_id: str, instance_date: date, task_title: str):
         db = _get_db()
-        inst = db.query(TaskInstance).get(instance_id)
+        inst = db.get(TaskInstance, instance_id)
         current_note = inst.notes or "" if inst else ""
         db.close()
 
@@ -1910,7 +1911,7 @@ def main_page():
 
             def save_note():
                 db2 = _get_db()
-                inst2 = db2.query(TaskInstance).get(instance_id)
+                inst2 = db2.get(TaskInstance, instance_id)
                 if inst2:
                     inst2.notes = note_area.value.strip() or None
                     db2.commit()
@@ -2024,7 +2025,7 @@ def main_page():
                 # Add preset items
                 for task_id in selected_task_ids:
                     task_insts = task_instances_map[task_id]
-                    task_obj = db2.query(Task).get(task_id)
+                    task_obj = db2.get(Task, task_id)
                     if not task_obj:
                         continue
                     
@@ -2100,7 +2101,7 @@ def main_page():
                     return
                 
                 db2 = _get_db()
-                preset = db2.query(Preset).options(joinedload(Preset.items)).get(preset_select.value)
+                preset = db2.get(Preset, preset_select.value, options=[joinedload(Preset.items)])
                 if not preset:
                     db2.close()
                     return
@@ -2156,7 +2157,7 @@ def main_page():
                     return
                 
                 db2 = _get_db()
-                preset = db2.query(Preset).options(joinedload(Preset.items)).get(preset_select.value)
+                preset = db2.get(Preset, preset_select.value, options=[joinedload(Preset.items)])
                 if not preset:
                     db2.close()
                     ui.notify("Preset nicht gefunden", type="negative")
@@ -2178,7 +2179,7 @@ def main_page():
                         actual_date = rep_start_date + timedelta(days=item.day_offset)
                         
                         # Find or create task
-                        task = db2.query(Task).get(item.task_id)
+                        task = db2.get(Task, item.task_id)
                         if not task:
                             # Task doesn't exist, create it
                             task = Task(
@@ -2215,7 +2216,7 @@ def main_page():
                                 inst.notes = f"Preset '{preset_name}' angewendet am {date.today().isoformat()}"
                         
                         # Find or create user
-                        user = db2.query(User).get(item.assigned_user_id)
+                        user = db2.get(User, item.assigned_user_id)
                         if not user:
                             # User doesn't exist anymore, skip assignment
                             continue
@@ -2271,7 +2272,7 @@ def main_page():
                                     with ui.row().classes("gap-1"):
                                         def view_preset(pid=preset.id):
                                             db2 = _get_db()
-                                            p = db2.query(Preset).options(joinedload(Preset.items)).get(pid)
+                                            p = db2.get(Preset, pid, options=[joinedload(Preset.items)])
                                             if p:
                                                 task_items = defaultdict(list)
                                                 for item in p.items:
@@ -2299,7 +2300,7 @@ def main_page():
                                         
                                         def delete_preset(pid=preset.id):
                                             db2 = _get_db()
-                                            p = db2.query(Preset).get(pid)
+                                            p = db2.get(Preset, pid)
                                             if p:
                                                 db2.delete(p)
                                                 db2.commit()
@@ -2338,7 +2339,7 @@ def main_page():
 
             def del_tag(tid):
                 db = _get_db()
-                t = db.query(Tag).get(tid)
+                t = db.get(Tag, tid)
                 if t:
                     db.delete(t)
                     db.commit()
@@ -2411,7 +2412,7 @@ def main_page():
 
             def _edit_user(uid):
                 db = _get_db()
-                u = db.query(User).get(uid)
+                u = db.get(User, uid)
                 if not u:
                     db.close()
                     return
@@ -2428,7 +2429,7 @@ def main_page():
 
                     def save_edit(uid=uid):
                         db2 = _get_db()
-                        u2 = db2.query(User).get(uid)
+                        u2 = db2.get(User, uid)
                         if u2:
                             u2.role = UserRole(edit_role.value)
                             u2.daily_capacity_minutes = int(edit_cap.value)
@@ -2449,7 +2450,7 @@ def main_page():
 
             def _delete_user(uid):
                 db = _get_db()
-                u = db.query(User).get(uid)
+                u = db.get(User, uid)
                 if u:
                     db.delete(u)
                     db.commit()
@@ -2641,7 +2642,7 @@ def main_page():
             if is_admin:
                 def activate(t_id=task.id, dt=d):
                     db2 = _get_db()
-                    task_obj = db2.query(Task).get(t_id)
+                    task_obj = db2.get(Task, t_id)
                     if task_obj and task_obj.is_recurring:
                         _remove_excluded_date(db2, task_obj, dt)
                     new_inst = TaskInstance(id=str(uuid.uuid4()), task_id=t_id, date=dt, status=TaskStatus.OPEN)
@@ -2677,9 +2678,9 @@ def main_page():
                         if user.id in assigned_ids:
                             def remove_self(iid=inst.id, uid=user.id):
                                 db2 = _get_db()
-                                inst2 = db2.query(TaskInstance).options(joinedload(TaskInstance.assigned_users)).get(iid)
+                                inst2 = db2.get(TaskInstance, iid, options=[joinedload(TaskInstance.assigned_users)])
                                 if inst2:
-                                    u_obj = db2.query(User).get(uid)
+                                    u_obj = db2.get(User, uid)
                                     if u_obj and u_obj in inst2.assigned_users:
                                         inst2.assigned_users.remove(u_obj)
                                         db2.commit()
@@ -2689,9 +2690,9 @@ def main_page():
                         else:
                             def add_self(iid=inst.id, uid=user.id):
                                 db2 = _get_db()
-                                inst2 = db2.query(TaskInstance).options(joinedload(TaskInstance.assigned_users)).get(iid)
+                                inst2 = db2.get(TaskInstance, iid, options=[joinedload(TaskInstance.assigned_users)])
                                 if inst2:
-                                    u_obj = db2.query(User).get(uid)
+                                    u_obj = db2.get(User, uid)
                                     if u_obj and u_obj not in inst2.assigned_users:
                                         inst2.assigned_users.append(u_obj)
                                         db2.commit()
@@ -2703,7 +2704,7 @@ def main_page():
                         def toggle_status(iid=inst.id):
                             db2 = _get_db()
                             did_complete = False
-                            instance = db2.query(TaskInstance).get(iid)
+                            instance = db2.get(TaskInstance, iid)
                             if instance:
                                 was_open = instance.status == TaskStatus.OPEN
                                 instance.status = TaskStatus.COMPLETED if was_open else TaskStatus.OPEN
@@ -2725,9 +2726,9 @@ def main_page():
                     if is_admin:
                         def deactivate(iid=inst.id, dt=d, t_id=task.id):
                             db2 = _get_db()
-                            instance = db2.query(TaskInstance).get(iid)
+                            instance = db2.get(TaskInstance, iid)
                             if instance:
-                                task_obj = db2.query(Task).get(t_id)
+                                task_obj = db2.get(Task, t_id)
                                 if task_obj and task_obj.is_recurring:
                                     _add_excluded_date(db2, task_obj, dt)
                                 db2.delete(instance)
@@ -2846,9 +2847,9 @@ def main_page():
                                         if user.id in assigned_ids:
                                             def rem_self_l(iid=inst.id, uid=user.id):
                                                 db2 = _get_db()
-                                                i2 = db2.query(TaskInstance).options(joinedload(TaskInstance.assigned_users)).get(iid)
+                                                i2 = db2.get(TaskInstance, iid, options=[joinedload(TaskInstance.assigned_users)])
                                                 if i2:
-                                                    uo = db2.query(User).get(uid)
+                                                    uo = db2.get(User, uid)
                                                     if uo and uo in i2.assigned_users:
                                                         i2.assigned_users.remove(uo)
                                                         db2.commit()
@@ -2858,9 +2859,9 @@ def main_page():
                                         else:
                                             def add_self_l(iid=inst.id, uid=user.id):
                                                 db2 = _get_db()
-                                                i2 = db2.query(TaskInstance).options(joinedload(TaskInstance.assigned_users)).get(iid)
+                                                i2 = db2.get(TaskInstance, iid, options=[joinedload(TaskInstance.assigned_users)])
                                                 if i2:
-                                                    uo = db2.query(User).get(uid)
+                                                    uo = db2.get(User, uid)
                                                     if uo and uo not in i2.assigned_users:
                                                         i2.assigned_users.append(uo)
                                                         db2.commit()
@@ -2873,7 +2874,7 @@ def main_page():
                                         def toggle_list(iid=inst.id):
                                             db2 = _get_db()
                                             did_complete = False
-                                            instance = db2.query(TaskInstance).get(iid)
+                                            instance = db2.get(TaskInstance, iid)
                                             if instance:
                                                 was_open = instance.status == TaskStatus.OPEN
                                                 instance.status = TaskStatus.COMPLETED if was_open else TaskStatus.OPEN
@@ -2898,9 +2899,9 @@ def main_page():
                                     if is_admin:
                                         def deactivate_l(iid=inst.id, dt=d, t_id=task.id):
                                             db2 = _get_db()
-                                            instance = db2.query(TaskInstance).get(iid)
+                                            instance = db2.get(TaskInstance, iid)
                                             if instance:
-                                                task_obj = db2.query(Task).get(t_id)
+                                                task_obj = db2.get(Task, t_id)
                                                 if task_obj and task_obj.is_recurring:
                                                     _add_excluded_date(db2, task_obj, dt)
                                                 db2.delete(instance)
@@ -2912,7 +2913,7 @@ def main_page():
                                     if is_admin:
                                         def activate_l(t_id=task.id, dt=d):
                                             db2 = _get_db()
-                                            task_obj = db2.query(Task).get(t_id)
+                                            task_obj = db2.get(Task, t_id)
                                             if task_obj and task_obj.is_recurring:
                                                 _remove_excluded_date(db2, task_obj, dt)
                                             new_inst = TaskInstance(id=str(uuid.uuid4()), task_id=t_id, date=dt, status=TaskStatus.OPEN)
@@ -3000,7 +3001,7 @@ def main_page():
             def _open_user_detail(uid: str):
                 user_detail_container.clear()
                 db2 = _get_db()
-                target_user = db2.query(User).get(uid)
+                target_user = db2.get(User, uid)
                 if not target_user:
                     db2.close()
                     return
@@ -3054,7 +3055,7 @@ def main_page():
                                                 def toggle_s(iid=inst.id):
                                                     db3 = _get_db()
                                                     did_complete = False
-                                                    instance = db3.query(TaskInstance).get(iid)
+                                                    instance = db3.get(TaskInstance, iid)
                                                     if instance:
                                                         was_open = instance.status == TaskStatus.OPEN
                                                         instance.status = TaskStatus.COMPLETED if was_open else TaskStatus.OPEN
@@ -3236,7 +3237,7 @@ async def _reorder_tasks_handler(request: StarletteRequest):
     task_ids = data.get("task_ids", [])
     db = _get_db()
     for idx, tid in enumerate(task_ids):
-        task = db.query(Task).get(tid)
+        task = db.get(Task, tid)
         if task:
             task.sort_order = idx
     db.commit()
