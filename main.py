@@ -1267,6 +1267,8 @@ def main_page():
         "view_mode": "week",
         "ref_date": _wstart,
         "display": "matrix",
+        "filter_user_ids": set(),
+        "filter_statuses": set(),
     }
 
     def get_dates():
@@ -1370,6 +1372,7 @@ def main_page():
             ui.button("Heute", icon="today", on_click=go_today).props("flat rounded dense no-caps").style("color: var(--owl-text);")
 
     # --------------- Containers ---------------
+    filter_container = ui.row().classes("w-full px-4 mt-1 gap-2 flex-wrap items-center")
     matrix_container = ui.column().classes("w-full px-4 mt-3")
     mobile_container = ui.column().classes("w-full px-4 mt-3")
     day_container = ui.column().classes("w-full px-4 mt-3")
@@ -2496,7 +2499,80 @@ def main_page():
 
     # --------------- Build / Rebuild ---------------
 
+    def _build_filter_bar():
+        filter_container.clear()
+        db = _get_db()
+        users_all = db.query(User).order_by(User.username).all()
+        db.close()
+
+        f_users = state["filter_user_ids"]
+        f_statuses = state["filter_statuses"]
+        has_filter = bool(f_users or f_statuses)
+
+        with filter_container:
+            ui.icon("filter_list", size="18px").style("color: var(--owl-muted);")
+
+            for idx, u in enumerate(users_all):
+                color = _user_color(idx)
+                active = u.id in f_users
+
+                def toggle_user(uid=u.id):
+                    if uid in state["filter_user_ids"]:
+                        state["filter_user_ids"].discard(uid)
+                    else:
+                        state["filter_user_ids"].add(uid)
+                    rebuild()
+
+                btn_style = (
+                    f"background:{color}; color:white;"
+                    if active
+                    else f"background:transparent; color:{color}; box-shadow: inset 0 0 0 1.5px {color}; opacity:0.8;"
+                )
+                ui.button(u.username, on_click=toggle_user).props("dense rounded no-caps").style(
+                    f"{btn_style} font-size:11px; font-weight:600; padding: 0 10px; min-height:26px;"
+                )
+
+            if users_all:
+                ui.separator().props("vertical").classes("h-5 mx-1")
+
+            for key, label, color in [
+                ("completed", "Erledigt", "#10b981"),
+                ("assigned", "Zugewiesen", "#6366f1"),
+                ("unassigned", "Offen", "#f59e0b"),
+                ("overdue", "Überfällig", "#ef4444"),
+            ]:
+                active = key in f_statuses
+
+                def toggle_st(k=key):
+                    if k in state["filter_statuses"]:
+                        state["filter_statuses"].discard(k)
+                    else:
+                        state["filter_statuses"].add(k)
+                    rebuild()
+
+                btn_style = (
+                    f"background:{color}; color:white;"
+                    if active
+                    else f"background:transparent; color:{color}; box-shadow: inset 0 0 0 1.5px {color}; opacity:0.8;"
+                )
+                ui.button(label, on_click=toggle_st).props("dense rounded no-caps").style(
+                    f"{btn_style} font-size:11px; font-weight:600; padding: 0 10px; min-height:26px;"
+                )
+
+            if has_filter:
+                ui.separator().props("vertical").classes("h-5 mx-1")
+
+                def clear_filters():
+                    state["filter_user_ids"] = set()
+                    state["filter_statuses"] = set()
+                    rebuild()
+
+                ui.button("Filter löschen", icon="close", on_click=clear_filters).props(
+                    "flat dense rounded no-caps"
+                ).style("color: var(--owl-muted); font-size:11px;")
+
     def rebuild():
+        _build_filter_bar()
         matrix_container.clear()
         mobile_container.clear()
         day_container.clear()
@@ -2527,6 +2603,23 @@ def main_page():
         for inst in instances:
             inst_map[(inst.task_id, inst.date)] = inst
 
+        # Apply active filters
+        f_users = state["filter_user_ids"]
+        f_statuses = state["filter_statuses"]
+        if f_users or f_statuses:
+            def _task_visible(task_id: str) -> bool:
+                for d in dates:
+                    inst = inst_map.get((task_id, d))
+                    status = _cell_status(inst, d)
+                    if status == "inactive":
+                        continue
+                    user_ok = (not f_users) or (inst is not None and any(u.id in f_users for u in inst.assigned_users))
+                    status_ok = (not f_statuses) or (status in f_statuses)
+                    if user_ok and status_ok:
+                        return True
+                return False
+            tasks = [t for t in tasks if _task_visible(t.id)]
+
         with matrix_container:
             if is_admin:
                 with ui.row().classes("gap-2 mb-3"):
@@ -2556,18 +2649,18 @@ def main_page():
                         ui.html(f'<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:{bc}"></span>')
                         ui.label(lbl).classes("text-xs").style("color: #64748b;")
 
-            with ui.element("div").props('id="hrp-scroll-container"').classes("w-full overflow-x-auto rounded-xl hrp-matrix-shell").style(
-                "background: transparent; box-shadow: none;"
+            with ui.element("div").props('id="hrp-scroll-container"').classes("w-full rounded-xl hrp-matrix-shell").style(
+                "background: transparent; box-shadow: none; overflow: auto; max-height: calc(100vh - 220px);"
             ):
                 with ui.element("table").classes("w-full text-xs").style("border-collapse: separate; border-spacing: 2px 3px;"):
                     with ui.element("thead"):
                         with ui.element("tr"):
-                            with ui.element("th").classes("p-2 text-left font-bold sticky left-0 z-10 min-w-[220px]").style("background: var(--owl-strong-surface); border-radius: 8px 0 0 8px;"):
+                            with ui.element("th").classes("p-2 text-left font-bold sticky left-0 top-0 z-30 min-w-[220px]").style("background: var(--owl-strong-surface); border-radius: 8px 0 0 8px;"):
                                 ui.label("Aufgabe").style("color: var(--owl-accent); font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 13px;")
                             for d in dates:
                                 is_today = d == date.today()
                                 bg = "background: color-mix(in srgb, var(--owl-accent) 22%, var(--owl-strong-surface)); box-shadow: 0 0 0 2px var(--owl-accent);" if is_today else "background: var(--owl-strong-surface);"
-                                with ui.element("th").classes("p-2 text-center min-w-[110px] font-bold").style(bg + " border-radius: 8px;"):
+                                with ui.element("th").classes("p-2 text-center min-w-[110px] font-bold sticky top-0 z-20").style(bg + " border-radius: 8px;"):
                                     weekday = WEEKDAY_LABELS[d.weekday()]
                                     is_weekend = d.weekday() >= 5
                                     col_style = "color: var(--owl-accent); font-weight: 800;" if is_today else ("color: var(--owl-accent-2);" if is_weekend else "color: rgba(255,255,255,0.82);")
@@ -2805,6 +2898,14 @@ def main_page():
                     status = _cell_status(inst, d)
                     if status == "inactive":
                         continue
+                    # Apply active filters
+                    f_users = state["filter_user_ids"]
+                    f_statuses = state["filter_statuses"]
+                    if f_users or f_statuses:
+                        user_ok = (not f_users) or (inst is not None and any(u.id in f_users for u in inst.assigned_users))
+                        status_ok = (not f_statuses) or (status in f_statuses)
+                        if not (user_ok and status_ok):
+                            continue
                     border_c, bg_c, icon_c = CELL_STYLES[status]
                     tags = task_tag_map.get(task.id, [])
 
@@ -2957,6 +3058,13 @@ def main_page():
 
         unassigned_today = [i for i in instances_today if not i.assigned_users and i.status == TaskStatus.OPEN]
 
+        # Apply active filters
+        f_users = state["filter_user_ids"]
+        f_statuses = state["filter_statuses"]
+        if f_statuses and "unassigned" not in f_statuses:
+            unassigned_today = []
+        filtered_users_all = [u for u in users_all if not f_users or u.id in f_users]
+
         with day_container:
             date_label.text = f"Tagesansicht – {WEEKDAY_LABELS[today.weekday()]}, {today.strftime('%d.%m.%Y')}"
 
@@ -3088,8 +3196,8 @@ def main_page():
                 ui.timer(10.0, lambda: user_detail_container.clear(), once=True)
 
             with ui.row().classes("w-full gap-3 flex-wrap"):
-                for idx, u in enumerate(users_all):
-                    color = _user_color(idx)
+                for idx, u in enumerate(filtered_users_all):
+                    color = _user_color(next(i for i, usr in enumerate(users_all) if usr.id == u.id))
                     user_today_count = sum(1 for i in instances_today if u.id in [usr.id for usr in i.assigned_users])
                     user_overdue_count = sum(1 for i in overdue_instances if u.id in [usr.id for usr in i.assigned_users])
                     today_mins = sum(
